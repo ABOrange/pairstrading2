@@ -1,0 +1,156 @@
+/* 儀表板樣式 */
+
+/* 全局樣式 - 為固定頂部導航騰出空間 */
+body {
+    padding-top: 56px; /* 根據導航欄的高度調整，通常是56px */
+}
+
+/* 邊欄樣式 */
+.sidebar {
+    position: fixed;
+    top: 56px; /* 調整為與導航欄高度相同的值 */
+    bottom: 0;
+    left: 0;
+    z-index: 90; /* 降低 z-index 確保不會覆蓋主內容 */
+    padding: 0; /* 移除原有的上方padding */
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.sidebar-sticky {
+    position: relative;
+    top: 0;
+    height: calc(100vh - 56px); /* 調整為扣除導航欄高度的視窗高度 */
+    padding-top: .5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* 主內容區域 */
+main {
+    padding-top: 1.5rem;
+    position: relative;
+    z-index: 1; /* 確保主內容在正確層級 */
+    margin-left: 16.6667%; /* 對應 col-md-2 的寬度，確保在 md 以上設備不會被側邊欄覆蓋 */
+}
+
+@media (max-width: 767.98px) {
+    main {
+        margin-left: 0; /* 在小螢幕上取消左邊距 */
+    }
+}
+
+/* 日誌容器 */
+.log-container {
+    max-height: 600px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+/* ASCII 圖表容器 */
+.text-monospace {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    white-space: pre;
+    font-size: 12px;
+    overflow-x: auto;
+    max-height: 500px;
+    overflow-y: auto;
+    line-height: 1.2;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* 信號報告樣式 */
+#signalReport {
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 5px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* 導航樣式 */
+.nav-link.active {
+    font-weight: bold;
+}
+
+/* 固定頂部導航欄樣式 */
+.navbar.fixed-top {
+    z-index: 1030; /* 確保導航欄在最上層 */
+}
+
+/* 響應式調整 */
+@media (max-width: 767.98px) {
+    .sidebar {
+        top: 56px; /* 保持與導航欄高度一致 */
+    }
+    
+    /* 在小螢幕上適當調整圖表容器高度 */
+    .chart-container {
+        height: 500px !important;
+    }
+}
+
+/* 在更小的螢幕上進一步調整 */
+@media (max-width: 576px) {
+    .chart-container {
+        height: 400px !important;
+    }
+}
+
+/* 卡片樣式 */
+.card {
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    background-color: rgba(0, 0, 0, 0.03);
+    font-weight: 500;
+}
+
+/* 圖表樣式 */
+canvas {
+    max-width: 100%;
+}
+
+/* 圖表容器樣式 */
+.chart-container {
+    position: relative;
+    height: 600px !important;  /* 大幅增加高度 */
+    width: 100%;
+    margin-bottom: 30px;       /* 增加下方間距 */
+}
+
+/* 確保圖表不超出其容器 */
+#zScoreChart, #spreadChart {
+    max-height: 600px;         /* 大幅增加最大高度 */
+}
+
+/* 表格樣式 */
+.table th {
+    font-weight: 500;
+}
+
+/* 提示框樣式 */
+.toast {
+    min-width: 300px;
+}
+
+/* 倒數計時器樣式 */
+#countdown-timer {
+    font-size: 1rem;
+    font-weight: bold;
+    min-width: 30px;
+    display: inline-block;
+    text-align: center;
+}

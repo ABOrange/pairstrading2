@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: common_header(~{::title})}">
+    <title>歷史倉位記錄 - 配對交易機器人</title>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: header}"></div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+            <main role="main" class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">歷史倉位記錄</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="refreshBtn">刷新</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" id="clearHistoryBtn">清空記錄</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 錯誤提示區域 -->
+                <div class="alert alert-danger alert-dismissible fade d-none" role="alert" id="errorAlert">
+                    <div id="errorMessage">出現錯誤</div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                
+                <!-- 資產價格與損益統計區域 -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <span th:text="${asset1 + ' 最新價格'}">Asset1 價格</span>
+                            </div>
+                            <div class="card-body">
+                                <h3 class="text-center" th:text="${asset1Price != null ? asset1Price : '- - -'}">- - -</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <span th:text="${asset2 + ' 最新價格'}">Asset2 價格</span>
+                            </div>
+                            <div class="card-body">
+                                <h3 class="text-center" th:text="${asset2Price != null ? asset2Price : '- - -'}">- - -</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <span>總計損益</span>
+                            </div>
+                            <div class="card-body">
+                                <h3 class="text-center" id="totalProfitDisplay">- - -</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-header bg-warning text-dark">
+                                <span>勝率</span>
+                            </div>
+                            <div class="card-body">
+                                <h3 class="text-center" id="winRateDisplay">- - -</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white d-flex justify-content-between">
+                                <span th:text="${asset1 + ' 歷史倉位'}">Asset1 歷史倉位</span>
+                                <span id="asset1Count" class="badge bg-light text-dark">0</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>時間</th>
+                                                <th>操作</th>
+                                                <th>類型</th>
+                                                <th>金額</th>
+                                                <th>入場價</th>
+                                                <th>平倉價</th>
+                                                <th>損益</th>
+                                                <th>Z分數</th>
+                                                <th>原因</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="asset1HistoryBody">
+                                            <tr>
+                                                <td colspan="9" class="text-center">暫無記錄</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-success text-white d-flex justify-content-between">
+                                <span th:text="${asset2 + ' 歷史倉位'}">Asset2 歷史倉位</span>
+                                <span id="asset2Count" class="badge bg-light text-dark">0</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>時間</th>
+                                                <th>操作</th>
+                                                <th>類型</th>
+                                                <th>金額</th>
+                                                <th>入場價</th>
+                                                <th>平倉價</th>
+                                                <th>損益</th>
+                                                <th>Z分數</th>
+                                                <th>原因</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="asset2HistoryBody">
+                                            <tr>
+                                                <td colspan="9" class="text-center">暫無記錄</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-dark text-white d-flex justify-content-between">
+                                <span>全部歷史倉位</span>
+                                <span id="totalCount" class="badge bg-light text-dark">0</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>時間</th>
+                                                <th>交易對</th>
+                                                <th>操作</th>
+                                                <th>類型</th>
+                                                <th>金額</th>
+                                                <th>入場價</th>
+                                                <th>平倉價</th>
+                                                <th>損益</th>
+                                                <th>Z分數</th>
+                                                <th>原因</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="allHistoryBody">
+                                            <tr>
+                                                <td colspan="10" class="text-center">暫無記錄</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div th:replace="~{fragments/header :: toast}"></div>
+    <div th:replace="~{fragments/header :: refresh-counter}"></div>
+    <div th:replace="~{fragments/footer :: footer}"></div>
+    
+    <script th:replace="~{fragments/footer :: refresh-script}"></script>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const asset1 = /*[[${asset1}]]*/'BTCUSDT';
+        const asset2 = /*[[${asset2}]]*/'ETHUSDT';
+        /*]]>*/
+
+        // 全局變數，用於標記是否正在加載數據
+        window.isLoadingPositionHistory = false;
+
+        // 頁面載入後自動載入數據
+        $(document).ready(function() {
+            // 初始化 Bootstrap 元素
+            initializeBootstrapComponents();
+            
+            // 載入歷史倉位數據
+            loadPositionHistory();
+
+            // 設置定時器，每30秒自動刷新一次
+            setInterval(loadPositionHistory, 30000);
+
+            // 刷新按鈕點擊事件
+            $('#refreshBtn').click(function() {
+                loadPositionHistory();
+            });
+
+            // 清空記錄按鈕點擊事件
+            $('#clearHistoryBtn').click(function() {
+                if (confirm('確定要清空所有歷史倉位記錄嗎？')) {
+                    clearPositionHistory();
+                }
+            });
+            
+            // 綁定錯誤提示關閉事件
+            $('#errorAlert .btn-close').click(function() {
+                hideErrorAlert();
+            });
+        });
+        
+        // 初始化Bootstrap組件
+        function initializeBootstrapComponents() {
+            // 初始化提示框
+            var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+            var toastList = toastElList.map(function(toastEl) {
+                return new bootstrap.Toast(toastEl);
+            });
+            
+            // 初始化警告提示
+            var alertList = [].slice.call(document.querySelectorAll('.alert'));
+            alertList.map(function(alertEl) {
+                return new bootstrap.Alert(alertEl);
+            });
+        }
+        
+        // 顯示錯誤提示
+        function showErrorAlert(message) {
+            const errorAlert = $('#errorAlert');
+            $('#errorMessage').text(message);
+            errorAlert.removeClass('d-none').addClass('show');
+            
+            // 自動隱藏
+            setTimeout(function() {
+                hideErrorAlert();
+            }, 10000); // 10秒後自動隱藏
+        }
+        
+        // 隱藏錯誤提示
+        function hideErrorAlert() {
+            const errorAlert = $('#errorAlert');
+            errorAlert.removeClass('show').addClass('d-none');
+        }
+
+        // 載入歷史倉位數據
+        function loadPositionHistory() {
+            // 顯示加載指示
+            showToast('info', '正在加載數據...');
+            
+            // 設置標記表示正在加載數據
+            window.isLoadingPositionHistory = true;
+            
+            // 只獲取所有歷史記錄，然後從中過濾出各資產的歷史
+            $.ajax({
+                url: '/api/position/history',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    console.log('All positions response:', response); // 調試用
+                    if (response && response.status === 'success' && response.history) {
+                        // 更新全部歷史記錄
+                        updateAllHistory(response.history, '#allHistoryBody', '#totalCount');
+                        
+                        // 從全部記錄中過濾出各資產的歷史記錄
+                        const allHistory = response.history || [];
+                        
+                        // 過濾出 asset1 的記錄
+                        const asset1History = allHistory.filter(position => position && position.symbol === asset1);
+                        updateAssetHistory(asset1, asset1History, '#asset1HistoryBody', '#asset1Count');
+                        
+                        // 過濾出 asset2 的記錄
+                        const asset2History = allHistory.filter(position => position && position.symbol === asset2);
+                        updateAssetHistory(asset2, asset2History, '#asset2HistoryBody', '#asset2Count');
+                        
+                        // 計算總損益和勝率
+                        calculateTotalProfitAndWinRate(allHistory);
+                    } else {
+                        console.error('獲取歷史倉位失敗:', response ? response.message : '未知錯誤');
+                        showToast('error', '獲取倉位記錄失敗');
+                        
+                        // 清空所有記錄表格
+                        updateAllHistory([], '#allHistoryBody', '#totalCount');
+                        updateAssetHistory(asset1, [], '#asset1HistoryBody', '#asset1Count');
+                        updateAssetHistory(asset2, [], '#asset2HistoryBody', '#asset2Count');
+                        
+                        // 重置損益統計
+                        $('#totalProfitDisplay').text('- - -');
+                        $('#winRateDisplay').text('- - -');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('API請求失敗:', error);
+                    showToast('error', 'API請求失敗: ' + error);
+                    
+                    // 清空所有記錄表格
+                    updateAllHistory([], '#allHistoryBody', '#totalCount');
+                    updateAssetHistory(asset1, [], '#asset1HistoryBody', '#asset1Count');
+                    updateAssetHistory(asset2, [], '#asset2HistoryBody', '#asset2Count');
+                    
+                    // 重置損益統計
+                    $('#totalProfitDisplay').text('- - -');
+                    $('#winRateDisplay').text('- - -');
+                },
+                complete: function() {
+                    // 清除正在加載標記
+                    window.isLoadingPositionHistory = false;
+                    
+                    // 更新後清除加載指示
+                    setTimeout(function() {
+                        hideToast();
+                    }, 500);
+                }
+            });
+        }
+        
+        // 計算總損益和勝率
+        function calculateTotalProfitAndWinRate(history) {
+            if (!history || history.length === 0) {
+                $('#totalProfitDisplay').text('0.00');
+                $('#winRateDisplay').text('0%');
+                return;
+            }
+            
+            // 過濾出所有平倉交易
+            const closedPositions = history.filter(position => 
+                position && position.action === 'CLOSE' && 
+                position.realizedProfit !== null && position.realizedProfit !== undefined);
+            
+            if (closedPositions.length === 0) {
+                $('#totalProfitDisplay').text('0.00');
+                $('#winRateDisplay').text('0%');
+                return;
+            }
+            
+            // 計算總損益
+            let totalProfit = 0;
+            let winCount = 0;
+            
+            closedPositions.forEach(position => {
+                try {
+                    const profit = parseFloat(position.realizedProfit);
+                    if (!isNaN(profit)) {
+                        totalProfit += profit;
+                        
+                        // 計算盈利交易次數
+                        if (profit > 0) {
+                            winCount++;
+                        }
+                    }
+                } catch (e) {
+                    console.error('計算損益時出錯:', e);
+                }
+            });
+            
+            // 格式化總損益
+            const formattedProfit = totalProfit.toFixed(4);
+            const profitClass = totalProfit > 0 ? 'text-success' : totalProfit < 0 ? 'text-danger' : '';
+            $('#totalProfitDisplay').text(formattedProfit).removeClass('text-success text-danger').addClass(profitClass);
+            
+            // 計算勝率
+            const winRate = (winCount / closedPositions.length * 100).toFixed(2);
+            $('#winRateDisplay').text(winRate + '%');
+            
+            // 添加勝率的顏色提示
+            const winRateElement = $('#winRateDisplay');
+            if (parseFloat(winRate) >= 60) {
+                winRateElement.removeClass('text-success text-warning text-danger').addClass('text-success');
+            } else if (parseFloat(winRate) >= 40) {
+                winRateElement.removeClass('text-success text-warning text-danger').addClass('text-warning');
+            } else {
+                winRateElement.removeClass('text-success text-warning text-danger').addClass('text-danger');
+            }
+        }
+
+        // 隱藏提示框
+        function hideToast() {
+            const toast = $('#resultToast');
+            const bsToast = bootstrap.Toast.getInstance(toast);
+            if (bsToast) {
+                bsToast.hide();
+            }
+        }
+
+        // 更新特定交易對的歷史記錄表格
+        function updateAssetHistory(asset, history, tableSelector, countSelector) {
+            const tableBody = $(tableSelector);
+            tableBody.empty();
+
+            try {
+                if (history && history.length > 0) {
+                    $(countSelector).text(history.length);
+                    let count = 0;
+
+                    $.each(history, function(index, position) {
+                        if (position) {
+                            count++;
+                            // 輸出調試信息
+                            console.log(`歷史記錄 ${index}:`, {
+                                symbol: position.symbol,
+                                entryPrice: position.entryPrice,
+                                entryPriceType: typeof position.entryPrice,
+                                zScore: position.zScore,
+                                zScoreType: typeof position.zScore
+                            });
+                            
+                            const actionClass = position.action === 'OPEN' ? 'text-success' : 'text-danger';
+                            const actionText = position.action === 'OPEN' ? '建倉' : '平倉';
+                            
+                            let typeText = '';
+                            let typeClass = '';
+                            if (position.positionAmt && parseFloat(position.positionAmt) > 0) {
+                                typeText = '多頭';
+                                typeClass = 'text-primary';
+                            } else if (position.positionAmt && parseFloat(position.positionAmt) < 0) {
+                                typeText = '空頭';
+                                typeClass = 'text-warning';
+                            } else {
+                                typeText = '未知';
+                                typeClass = '';
+                            }
+
+                            // 處理入場價格
+                            let displayEntryPrice = 'N/A';
+                            if (position.entryPrice !== null && position.entryPrice !== undefined) {
+                                if (typeof position.entryPrice === 'object' && position.entryPrice !== null) {
+                                    // 如果是 BigDecimal 對象 (JSON 表示為一個對象)
+                                    displayEntryPrice = position.entryPrice.toString ? position.entryPrice.toString() : JSON.stringify(position.entryPrice);
+                                } else {
+                                    // 如果是數字或字串
+                                    displayEntryPrice = position.entryPrice;
+                                }
+                            }
+                            
+                            // 處理 Z 分數
+                            let displayZScore = 'N/A';
+                            if (position.zScore !== null && position.zScore !== undefined) {
+                                try {
+                                    const zScoreValue = parseFloat(position.zScore);
+                                    if (!isNaN(zScoreValue)) {
+                                        displayZScore = zScoreValue.toFixed(2);
+                                    }
+                                } catch (e) {
+                                    console.error('解析 Z 分數時出錯:', e);
+                                    displayZScore = position.zScore;  // 使用原始值
+                                }
+                            }
+
+                            // 處理平倉價格
+                            let displayExitPrice = 'N/A';
+                            if (position.exitPrice !== null && position.exitPrice !== undefined && position.action === 'CLOSE') {
+                                if (typeof position.exitPrice === 'object' && position.exitPrice !== null) {
+                                    displayExitPrice = position.exitPrice.toString ? position.exitPrice.toString() : JSON.stringify(position.exitPrice);
+                                } else {
+                                    displayExitPrice = position.exitPrice;
+                                }
+                            }
+                            
+                            // 處理損益
+                            let displayProfit = 'N/A';
+                            let profitClass = '';
+                            if (position.realizedProfit !== null && position.realizedProfit !== undefined && position.action === 'CLOSE') {
+                                try {
+                                    const profitValue = parseFloat(position.realizedProfit);
+                                    if (!isNaN(profitValue)) {
+                                        displayProfit = profitValue.toFixed(4);
+                                        profitClass = profitValue > 0 ? 'text-success' : profitValue < 0 ? 'text-danger' : '';
+                                    }
+                                } catch (e) {
+                                    console.error('解析損益時出錯:', e);
+                                    displayProfit = position.realizedProfit;
+                                }
+                            }
+                            
+                            const row = `
+                                <tr>
+                                    <td>${position.formattedTime || '未知時間'}</td>
+                                    <td class="${actionClass}">${actionText}</td>
+                                    <td class="${typeClass}">${typeText}</td>
+                                    <td>${position.positionAmt ? Math.abs(parseFloat(position.positionAmt)) : 'N/A'}</td>
+                                    <td>${displayEntryPrice}</td>
+                                    <td>${position.action === 'CLOSE' ? displayExitPrice : 'N/A'}</td>
+                                    <td class="${profitClass}">${position.action === 'CLOSE' ? displayProfit : 'N/A'}</td>
+                                    <td>${displayZScore}</td>
+                                    <td>${position.reason || 'N/A'}</td>
+                                </tr>
+                            `;
+                            tableBody.append(row);
+                        }
+                    });
+                    
+                    if (count === 0) {
+                        // 如果沒有有效的倉位數據（空對象）
+                        $(countSelector).text(0);
+                        tableBody.append('<tr><td colspan="9" class="text-center">暫無有效記錄</td></tr>');
+                    }
+                } else {
+                    $(countSelector).text(0);
+                    tableBody.append('<tr><td colspan="9" class="text-center">暫無記錄</td></tr>');
+                }
+            } catch (e) {
+                console.error('更新交易對歷史記錄時發生錯誤:', e);
+                $(countSelector).text(0);
+                tableBody.append(`<tr><td colspan="9" class="text-center text-danger">數據處理錯誤: ${e.message}</td></tr>`);
+                tableBody.append(`<tr><td colspan="7" class="text-center text-danger">數據處理錯誤: ${e.message}</td></tr>`);
+            }
+        }
+
+        // 更新所有歷史記錄表格
+        function updateAllHistory(history, tableSelector, countSelector) {
+            const tableBody = $(tableSelector);
+            tableBody.empty();
+
+            try {
+                if (history && history.length > 0) {
+                    $(countSelector).text(history.length);
+                    let count = 0;
+
+                    $.each(history, function(index, position) {
+                        if (position) {
+                            count++;
+                            // 輸出調試信息
+                            console.log(`歷史記錄 ${index}:`, {
+                                symbol: position.symbol,
+                                entryPrice: position.entryPrice,
+                                entryPriceType: typeof position.entryPrice,
+                                zScore: position.zScore,
+                                zScoreType: typeof position.zScore
+                            });
+                            
+                            const actionClass = position.action === 'OPEN' ? 'text-success' : 'text-danger';
+                            const actionText = position.action === 'OPEN' ? '建倉' : '平倉';
+                            
+                            let typeText = '';
+                            let typeClass = '';
+                            if (position.positionAmt && parseFloat(position.positionAmt) > 0) {
+                                typeText = '多頭';
+                                typeClass = 'text-primary';
+                            } else if (position.positionAmt && parseFloat(position.positionAmt) < 0) {
+                                typeText = '空頭';
+                                typeClass = 'text-warning';
+                            } else {
+                                typeText = '未知';
+                                typeClass = '';
+                            }
+
+                            // 處理入場價格
+                            let displayEntryPrice = 'N/A';
+                            if (position.entryPrice !== null && position.entryPrice !== undefined) {
+                                if (typeof position.entryPrice === 'object' && position.entryPrice !== null) {
+                                    // 如果是 BigDecimal 對象 (JSON 表示為一個對象)
+                                    displayEntryPrice = position.entryPrice.toString ? position.entryPrice.toString() : JSON.stringify(position.entryPrice);
+                                } else {
+                                    // 如果是數字或字串
+                                    displayEntryPrice = position.entryPrice;
+                                }
+                            }
+                            
+                            // 處理 Z 分數
+                            let displayZScore = 'N/A';
+                            if (position.zScore !== null && position.zScore !== undefined) {
+                                try {
+                                    const zScoreValue = parseFloat(position.zScore);
+                                    if (!isNaN(zScoreValue)) {
+                                        displayZScore = zScoreValue.toFixed(2);
+                                    }
+                                } catch (e) {
+                                    console.error('解析 Z 分數時出錯:', e);
+                                    displayZScore = position.zScore;  // 使用原始值
+                                }
+                            }
+
+                            // 處理平倉價格
+                            let displayExitPrice = 'N/A';
+                            if (position.exitPrice !== null && position.exitPrice !== undefined && position.action === 'CLOSE') {
+                                if (typeof position.exitPrice === 'object' && position.exitPrice !== null) {
+                                    displayExitPrice = position.exitPrice.toString ? position.exitPrice.toString() : JSON.stringify(position.exitPrice);
+                                } else {
+                                    displayExitPrice = position.exitPrice;
+                                }
+                            }
+                            
+                            // 處理損益
+                            let displayProfit = 'N/A';
+                            let profitClass = '';
+                            if (position.realizedProfit !== null && position.realizedProfit !== undefined && position.action === 'CLOSE') {
+                                try {
+                                    const profitValue = parseFloat(position.realizedProfit);
+                                    if (!isNaN(profitValue)) {
+                                        displayProfit = profitValue.toFixed(4);
+                                        profitClass = profitValue > 0 ? 'text-success' : profitValue < 0 ? 'text-danger' : '';
+                                    }
+                                } catch (e) {
+                                    console.error('解析損益時出錯:', e);
+                                    displayProfit = position.realizedProfit;
+                                }
+                            }
+                            
+                            const row = `
+                                <tr>
+                                    <td>${position.formattedTime || '未知時間'}</td>
+                                    <td>${position.symbol || 'N/A'}</td>
+                                    <td class="${actionClass}">${actionText}</td>
+                                    <td class="${typeClass}">${typeText}</td>
+                                    <td>${position.positionAmt ? Math.abs(parseFloat(position.positionAmt)) : 'N/A'}</td>
+                                    <td>${displayEntryPrice}</td>
+                                    <td>${position.action === 'CLOSE' ? displayExitPrice : 'N/A'}</td>
+                                    <td class="${profitClass}">${position.action === 'CLOSE' ? displayProfit : 'N/A'}</td>
+                                    <td>${displayZScore}</td>
+                                    <td>${position.reason || 'N/A'}</td>
+                                </tr>
+                            `;
+                            tableBody.append(row);
+                        }
+                    });
+                    
+                    if (count === 0) {
+                        // 如果沒有有效的倉位數據（空對象）
+                        $(countSelector).text(0);
+                        tableBody.append('<tr><td colspan="10" class="text-center">暫無有效記錄</td></tr>');
+                    }
+                } else {
+                    $(countSelector).text(0);
+                    tableBody.append('<tr><td colspan="10" class="text-center">暫無記錄</td></tr>');
+                }
+            } catch (e) {
+                console.error('更新全部歷史記錄時發生錯誤:', e);
+                $(countSelector).text(0);
+                tableBody.append(`<tr><td colspan="10" class="text-center text-danger">數據處理錯誤: ${e.message}</td></tr>`);
+            }
+        }
+
+        // 清空歷史記錄
+        function clearPositionHistory() {
+            // 如果正在加載數據，不要執行清空操作
+            if (window.isLoadingPositionHistory) {
+                showToast('warning', '正在加載數據，請稍後再試...');
+                return;
+            }
+            
+            // 顯示加載提示
+            showToast('info', '正在清空歷史記錄...');
+            
+            $.ajax({
+                url: '/api/position/clear',
+                type: 'POST',
+                dataType: 'json',
+                success: function(response) {
+                    if (response && response.status === 'success') {
+                        showToast('success', '歷史倉位記錄已清空！');
+                        
+                        // 清空所有表格內容
+                        updateAllHistory([], '#allHistoryBody', '#totalCount');
+                        updateAssetHistory(asset1, [], '#asset1HistoryBody', '#asset1Count');
+                        updateAssetHistory(asset2, [], '#asset2HistoryBody', '#asset2Count');
+                    } else {
+                        const errorMsg = response ? response.message : '未知錯誤';
+                        showToast('error', '清空記錄失敗: ' + errorMsg);
+                        showErrorAlert('清空記錄失敗: ' + errorMsg);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('API請求失敗:', error);
+                    showToast('error', 'API請求失敗: ' + error);
+                    showErrorAlert('API請求失敗: ' + error);
+                },
+                complete: function() {
+                    setTimeout(function() {
+                        hideToast();
+                    }, 3000);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

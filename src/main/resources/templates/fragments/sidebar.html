@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-tw" xmlns:th="http://www.thymeleaf.org">
+<body>
+    <!-- 側邊欄 -->
+    <nav th:fragment="sidebar" id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+        <div class="p-3">
+            <div class="settings-section mb-3">
+                <h5 class="pb-2 mb-0" style="color: #2780e3; border-bottom: 1px solid #2780e3;">
+                    <i class="fas fa-tachometer-alt"></i> 儀表板
+                </h5>
+                <div class="list-group list-group-flush border-0 mt-2">
+                    <a class="list-group-item list-group-item-action border-0" 
+                       th:classappend="${activeTab == 'overview'} ? 'active'" 
+                       href="/dashboard/overview">
+                        <i class="fas fa-tachometer-alt"></i> 總覽
+                    </a>
+                    <a class="list-group-item list-group-item-action border-0" 
+                       th:classappend="${activeTab == 'charts'} ? 'active'" 
+                       href="/dashboard/charts">
+                        <i class="fas fa-chart-line"></i> 交易圖表
+                    </a>
+                    <a class="list-group-item list-group-item-action border-0" 
+                       th:classappend="${activeTab == 'backtest'} ? 'active'" 
+                       href="/backtest">
+                        <i class="fas fa-chart-bar"></i> 交易對回測分析
+                    </a>
+                    <a class="list-group-item list-group-item-action border-0" 
+                       th:classappend="${activeTab == 'system-logs'} ? 'active'" 
+                       href="/dashboard/system-logs">
+                        <i class="fas fa-list-alt"></i> 系統日誌
+                    </a>
+                    <a class="list-group-item list-group-item-action border-0" 
+                       th:classappend="${activeTab == 'trade-logs'} ? 'active'" 
+                       href="/dashboard/trade-logs">
+                        <i class="fas fa-exchange-alt"></i> 交易操作日誌
+                    </a>
+                    <a class="list-group-item list-group-item-action border-0" 
+                       th:classappend="${activeTab == 'position-history'} ? 'active'" 
+                       href="/dashboard/position-history">
+                        <i class="fas fa-history"></i> 歷史倉位記錄
+                    </a>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h5 class="pb-2 mb-0" style="color: #2780e3; border-bottom: 1px solid #2780e3;">
+                    <i class="fas fa-cog"></i> 系統設定
+                </h5>
+                <div class="list-group list-group-flush border-0 mt-2">
+                    <a class="list-group-item list-group-item-action border-0" 
+                       th:classappend="${activeTab == 'api-config'} ? 'active'" 
+                       href="/settings/api-config">
+                        <i class="fas fa-key"></i> API設定
+                    </a>
+                    <a class="list-group-item list-group-item-action border-0" 
+                       th:classappend="${activeTab == 'trading-config'} ? 'active'" 
+                       href="/settings/trading">
+                        <i class="fas fa-sliders-h"></i> 交易配置
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+</body>
+</html>

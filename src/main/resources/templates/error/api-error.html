@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: common_header(~{::title})}">
+    <title>API錯誤 - 配對交易機器人</title>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: header}"></div>
+    
+    <div class="container-fluid">
+        <div class="row">
+            <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+            
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">API錯誤</h1>
+                </div>
+                
+                <div class="alert alert-danger" role="alert">
+                    <h4 class="alert-heading" th:text="${errorTitle}">API設定錯誤!</h4>
+                    <p th:text="${errorMessage}">發生API相關錯誤。</p>
+                    <hr>
+                    <p class="mb-0">請確保您已正確設定API金鑰和秘鑰。</p>
+                    <div class="mt-3" th:if="${redirectUrl != null}">
+                        <a th:href="${redirectUrl}" class="btn btn-primary">
+                            <i class="fas fa-key"></i> <span th:text="${redirectText ?: '前往API設定頁面'}">前往API設定頁面</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header">常見API錯誤解決方法</div>
+                    <div class="card-body">
+                        <h5>API金鑰未設定</h5>
+                        <p>請前往設定頁面設定您的幣安API金鑰和秘鑰。</p>
+                        
+                        <h5>API金鑰無效</h5>
+                        <p>請確保您輸入的API金鑰和秘鑰正確無誤，可以嘗試重新從幣安網站生成新的API金鑰。</p>
+                        
+                        <h5>API權限不足</h5>
+                        <p>請確保您的API金鑰具有足夠的權限，包括讀取資訊和交易權限。</p>
+                        
+                        <h5>API請求失敗</h5>
+                        <p>可能是網絡問題或幣安服務器暫時無法訪問，請稍後再試。</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <div th:replace="~{fragments/footer :: footer}"></div>
+</body>
+</html>

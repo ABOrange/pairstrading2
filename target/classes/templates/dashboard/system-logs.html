@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-tw" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: common_header(~{::title})}">
+    <title>系統日誌 - 配對交易機器人</title>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: header}"></div>
+    
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 側邊欄 -->
+            <div th:replace="fragments/sidebar :: sidebar"></div>
+            
+            <!-- 主要內容區 -->
+            <div class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="container mt-4 mb-5">
+                    <div class="row mb-4">
+                        <div class="col">
+                            <h2><i class="fas fa-list-alt"></i> 系統日誌</h2>
+                            <p class="text-muted">查看配對交易機器人的系統運行日誌。</p>
+                            <hr>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col">
+                            <div class="d-flex justify-content-end">
+                                <button type="button" class="btn btn-outline-secondary me-2" id="refreshLogsBtn">
+                                    <i class="fas fa-sync-alt"></i> 重新整理
+                                </button>
+                                <button type="button" class="btn btn-outline-danger" id="clearLogsBtn">
+                                    <i class="fas fa-trash-alt"></i> 清除日誌
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 系統日誌 -->
+                    <div class="settings-section">
+                        <h3><i class="fas fa-terminal"></i> 系統運行日誌</h3>
+                        <pre id="systemLogs" class="log-container"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div th:replace="fragments/header :: toast"></div>
+    <div th:replace="fragments/header :: refresh-counter"></div>
+    
+    <!-- 引入JavaScript庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- 自定義JavaScript -->
+    <script>
+        $(document).ready(function() {
+            // 設置自動刷新倒數計時
+            let counter = 20;
+            
+            // 更新倒數計時顯示
+            function updateCounter() {
+                $('#refreshCounter').text(counter);
+                counter--;
+                
+                if (counter < 0) {
+                    // 重置計時器並刷新頁面
+                    counter = 20;
+                    window.location.reload();
+                }
+            }
+            
+            // 每秒更新倒數計時
+            setInterval(updateCounter, 1000);
+            
+            // 載入系統日誌
+            function loadSystemLogs() {
+                $.ajax({
+                    url: '/api/logs/system',
+                    type: 'GET',
+                    success: function(response) {
+                        // 因為後端返回的是JSON對象，需要處理成字符串顯示
+                        if (typeof response === 'object' && response.logs) {
+                            // 將日誌數組轉換為字符串顯示
+                            $('#systemLogs').text(response.logs.join('\n'));
+                        } else {
+                            // 直接顯示響應內容
+                            $('#systemLogs').text(JSON.stringify(response, null, 2));
+                        }
+                        // 滾動到日誌底部
+                        $('#systemLogs').scrollTop($('#systemLogs')[0].scrollHeight);
+                    },
+                    error: function(error) {
+                        // 顯示錯誤消息
+                        $('#toastTitle').text('錯誤');
+                        $('#toastMessage').text('載入系統日誌失敗：' + error.statusText);
+                        var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                        toast.show();
+                    }
+                });
+            }
+            
+            // 初始載入日誌
+            loadSystemLogs();
+            
+            // 手動執行任務事件
+            $('#runJobBtn').on('click', function() {
+                $.ajax({
+                    url: '/api/trading-config/run-job',
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // 顯示成功消息
+                            $('#toastTitle').text('成功');
+                            $('#toastMessage').text(response.message);
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                            
+                            // 重新載入日誌
+                            setTimeout(loadSystemLogs, 2000);
+                        } else {
+                            // 顯示錯誤消息
+                            $('#toastTitle').text('錯誤');
+                            $('#toastMessage').text(response.message);
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        }
+                    },
+                    error: function(error) {
+                        // 顯示錯誤消息
+                        $('#toastTitle').text('錯誤');
+                        $('#toastMessage').text('執行任務失敗：' + error.statusText);
+                        var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                        toast.show();
+                    }
+                });
+            });
+            
+            // 刷新日誌按鈕
+            $('#refreshLogsBtn').on('click', function() {
+                loadSystemLogs();
+                
+                // 顯示成功消息
+                $('#toastTitle').text('成功');
+                $('#toastMessage').text('已重新載入系統日誌');
+                var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                toast.show();
+            });
+            
+            // 清除日誌按鈕
+            $('#clearLogsBtn').on('click', function() {
+                if (confirm('確定要清除系統日誌嗎？此操作不可恢復！')) {
+                    $.ajax({
+                        url: '/api/logs/clear',
+                        type: 'GET',
+                        success: function(response) {
+                            // 重新載入日誌
+                            loadSystemLogs();
+                            
+                            // 顯示成功消息
+                            $('#toastTitle').text('成功');
+                            $('#toastMessage').text('系統日誌已清除');
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        },
+                        error: function(error) {
+                            // 顯示錯誤消息
+                            $('#toastTitle').text('錯誤');
+                            $('#toastMessage').text('清除系統日誌失敗：' + error.statusText);
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

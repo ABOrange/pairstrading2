@@ -1,0 +1,82 @@
+spring:
+  application:
+    name: pairs-trading-bot
+  
+  # H2數據庫配置
+  datasource:
+    url: jdbc:h2:file:./data/positiondb
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+    # 啟用SQL初始化
+    initialization-mode: never
+  
+  # SQL初始化配置
+  sql:
+    init:
+      mode: never
+      continue-on-error: false
+  
+  # JPA配置
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+    defer-datasource-initialization: true
+  
+  # 啟用H2控制台
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+  
+  # Thymeleaf配置
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+    # 移除view-names限制，允許所有視圖
+    
+  # 靜態資源配置
+  mvc:
+    static-path-pattern: /**
+  web:
+    resources:
+      static-locations: classpath:/static/
+    
+  # Quartz配置
+  quartz:
+    job-store-type: memory # 使用內存儲存作業(也可以設為jdbc使用資料庫儲存)
+    scheduler-name: PairsTradingScheduler
+    auto-startup: true
+    startup-delay: 5s
+    wait-for-jobs-to-complete-on-shutdown: true
+    overwrite-existing-jobs: true
+    properties:
+      org.quartz.threadPool.threadCount: 5
+
+# 幣安API配置 (API金鑰已移至資料庫)
+binance:
+  baseUrl: https://testnet.binancefuture.com # 幣安永續合約測試網絡URL
+  testnetEnabled: true # 啟用測試網絡
+  connectionTimeout: 10000
+  readTimeout: 10000
+
+# 交易配置已移至資料庫
+# 可通過 /settings/trading 頁面進行管理
+
+# 日誌配置
+logging:
+  level:
+    root: INFO
+    andy.crypto.pairstrading.bot: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <!-- 頁尾 -->
+    <footer th:fragment="footer" class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">© 2025 配對交易機器人</span>
+        </div>
+
+        <script th:fragment="refresh-script">
+            // 設置自動刷新倒數計時
+            $(document).ready(function() {
+                // 初始化倒數計時
+                let counter = 20;
+                
+                // 更新倒數計時顯示
+                function updateCounter() {
+                    $('#refreshCounter').text(counter);
+                    counter--;
+                    
+                    if (counter < 0) {
+                        // 重置計時器並刷新頁面
+                        counter = 20;
+                        refreshPage();
+                    }
+                }
+                
+                // 每秒更新倒數計時
+                setInterval(updateCounter, 1000);
+                
+                // 手動執行任務事件
+                $('#runJobBtn').on('click', function() {
+                    $.ajax({
+                        url: '/dashboard/api/run-job',
+                        type: 'GET',
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                showToast('成功', response.message);
+                                
+                                // 重置倒數計時並刷新頁面
+                                setTimeout(function() {
+                                    refreshPage();
+                                }, 2000);
+                            } else {
+                                showToast('錯誤', response.message, true);
+                            }
+                        },
+                        error: function(error) {
+                            showToast('錯誤', '執行任務失敗：' + error.statusText, true);
+                        }
+                    });
+                });
+            });
+        </script>
+    </footer>
+</body>
+</html>

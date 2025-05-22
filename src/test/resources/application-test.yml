@@ -1,0 +1,40 @@
+spring:
+  # 測試環境配置
+  config:
+    activate:
+      on-profile: test
+  
+  # Quartz配置
+  quartz:
+    job-store-type: memory
+    auto-startup: false  # 測試時不啟動排程器
+
+# 幣安API配置 - 測試網設置
+binance:
+
+  testnetEnabled: true
+  connectionTimeout: 10000
+  readTimeout: 10000
+
+# 交易配置 - 測試用
+trading:
+  enable: true  # 在測試網上允許交易
+  pair:
+    asset1: BTCUSDT
+    asset2: ETHUSDT
+  window:
+    size: 30
+  threshold:
+    entry: 2.0
+    exit: 0.5
+  position:
+    size: 0.001  # 測試用小倉位
+    amount_based: true  # true表示使用金額計價(USDT)，false表示使用合約數量計價
+    leverage: 3  # 測試環境使用較小的槓桿倍率
+
+# 日誌配置
+logging:
+  level:
+    root: INFO
+    andy.crypto.pairstrading.bot: DEBUG
+    org.springframework: WARN

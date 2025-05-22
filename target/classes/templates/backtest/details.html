@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-tw" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: common_header(~{::title})}">
+    <title>交易對回測詳情 - 配對交易機器人</title>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: header}"></div>
+    
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 側邊欄 -->
+            <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+            
+            <!-- 主要內容區 -->
+            <div class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="container mt-4 mb-5">
+                    <div class="row mb-3">
+                        <div class="col">
+                            <nav aria-label="breadcrumb">
+                                <ol class="breadcrumb">
+                                    <li class="breadcrumb-item"><a href="/backtest">交易對回測分析</a></li>
+                                    <li class="breadcrumb-item active" aria-current="page">回測詳情</li>
+                                </ol>
+                            </nav>
+                        </div>
+                    </div>
+                    
+                    <!-- 錯誤提示 -->
+                    <div class="row mb-4" th:if="${error != null}">
+                        <div class="col">
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-circle"></i> <span th:text="${error}">錯誤信息</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 回測結果詳情 -->
+                    <div class="row mb-4" th:if="${result != null}">
+                        <div class="col">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <h3 class="card-title">
+                                        <i class="fas fa-chart-line"></i> 
+                                        交易對回測詳情: <span th:text="${symbol1}">BTCUSDT</span> + <span th:text="${symbol2}">ETHUSDT</span>
+                                    </h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-4">
+                                        <div class="col-md-6">
+                                            <div class="card bg-light">
+                                                <div class="card-header">
+                                                    <h5 class="card-title">基本資訊</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <table class="table">
+                                                        <tr>
+                                                            <th>交易對</th>
+                                                            <td><span th:text="${result.asset1}">BTCUSDT</span> <i class="fas fa-exchange-alt"></i> <span th:text="${result.asset2}">ETHUSDT</span></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>相關性</th>
+                                                            <td><span th:text="${#numbers.formatDecimal(result.correlation, 1, 4)}">0.8765</span></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>回歸係數 (Beta)</th>
+                                                            <td><span th:text="${#numbers.formatDecimal(result.beta, 1, 4)}">0.9876</span></td>
+                                                        </tr>
+                                                        <!-- 移除回歸截距 (Alpha) 行，此屬性在 PairsTradingResult 模型中不存在 -->
+                                                        
+                                                        <tr>
+                                                            <th>價差</th>
+                                                            <td><span th:text="${#numbers.formatDecimal(result.spread, 1, 2)}">123.45</span></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>價差均值</th>
+                                                            <td><span th:text="${#numbers.formatDecimal(result.spreadMean, 1, 2)}">100.00</span></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>價差標準差</th>
+                                                            <td><span th:text="${#numbers.formatDecimal(result.spreadStd, 1, 2)}">20.00</span></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>最新Z分數</th>
+                                                            <td><span th:text="${#numbers.formatDecimal(result.zScore, 1, 4)}">1.2345</span></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>回測期間套利次數</th>
+                                                            <td><span th:text="${result.arbitrageCount}">0</span></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>回測期間爆倉次數</th>
+                                                            <td><span th:text="${result.liquidationCount}">0</span></td>
+                                                        </tr>
+                                                    </table>
+                                                    <div class="mt-3 text-center">
+                                                        <button type="button" class="btn btn-primary" id="applyToPairBtn">
+                                                            <i class="fas fa-robot"></i> 套用機器人使用此交易對
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card bg-light">
+                                                <div class="card-header">
+                                                    <h5 class="card-title">交易信號</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div th:with="alertClass=(${result.signalType.name()} == 'LONG_ASSET1_SHORT_ASSET2' ? 'alert-danger' : 
+                                                        (${result.signalType.name()} == 'SHORT_ASSET1_LONG_ASSET2' ? 'alert-danger' : 
+                                                        (${result.signalType.name()} == 'CLOSE_POSITIONS' ? 'alert-success' : 
+                                                        'alert-warning')))" th:class="${'alert ' + alertClass}">
+                                                        <h4 class="alert-heading" th:with="signalText=(${result.signalType.name()} == 'LONG_ASSET1_SHORT_ASSET2' ? '做多 ' + ${result.asset1} + '，做空 ' + ${result.asset2} : 
+                                                            (${result.signalType.name()} == 'SHORT_ASSET1_LONG_ASSET2' ? '做空 ' + ${result.asset1} + '，做多 ' + ${result.asset2} : 
+                                                            (${result.signalType.name()} == 'CLOSE_POSITIONS' ? '平倉所有倉位' : 
+                                                            '沒有交易信號')))" th:text="${signalText}">交易信號</h4>
+                                                        <p>信號強度: <span th:text="${result.signalRating}" th:with="ratingClass=(${result.signalRating} == '極強' ? 'text-danger fw-bold' : 
+                                                            (${result.signalRating} == '很強' ? 'text-danger' : 
+                                                            (${result.signalRating} == '強' ? 'text-warning fw-bold' : 
+                                                            (${result.signalRating} == '中等' ? 'text-warning' : 
+                                                            (${result.signalRating} == '弱' ? 'text-info' : 
+                                                            'text-muted')))))" th:class="${ratingClass}">中等</span></p>
+                                                        <hr>
+                                                        <p class="mb-0">系統配置: 窗口大小 <span th:text="${windowSize}">30</span>, 入場閾值 <span th:text="${entryThreshold}">2.0</span>, 出場閾值 <span th:text="${exitThreshold}">0.5</span></p>
+                                                    </div>
+                                                    
+                                                    <!-- 交易信號報告 (ASCII) -->
+                                                    <div class="mt-3">
+                                                        <h6>信號報告:</h6>
+                                                        <pre class="bg-dark text-light p-3" style="font-size: 0.9em;" th:text="${result.signalReport}">交易信號報告</pre>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 圖表區域 -->
+                                    <!-- Z分數圖表 -->
+                                    <div class="row mb-4">
+                                        <div class="col-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5 class="card-title">Z分數圖表 <span class="float-end" id="zScoreInfo"></span></h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <!-- 添加可視化圖表 Canvas -->
+                                                    <div class="chart-container mb-3">
+                                                        <canvas id="zScoreChart" style="height: 350px"></canvas>
+                                                    </div>
+                                                    
+                                                    <!-- 原ASCII圖表，放在手風琴折疊面板中 -->
+                                                    <div class="accordion" id="zScoreDetailAccordion">
+                                                        <div class="accordion-item">
+                                                            <h2 class="accordion-header" id="zScoreDetailHeader">
+                                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#zScoreDetailCollapse" aria-expanded="false" aria-controls="zScoreDetailCollapse">
+                                                                    ASCII 圖表 (原始輸出)
+                                                                </button>
+                                                            </h2>
+                                                            <div id="zScoreDetailCollapse" class="accordion-collapse collapse" aria-labelledby="zScoreDetailHeader" data-bs-parent="#zScoreDetailAccordion">
+                                                                <div class="accordion-body">
+                                                                    <pre class="bg-dark text-light p-3" style="font-size: 0.7em; line-height: 1.2;" th:text="${result.zScoreChart}" id="zScoreText">Z分數圖表</pre>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="mt-3">
+                                                        <h6>交易策略提示</h6>
+                                                        <div class="alert alert-info" id="zScoreTips">
+                                                            <strong>Z分數解釋:</strong><br>
+                                                            Z分數大於入場閾值(<span th:text="${entryThreshold}">2.0</span>): 做空資產1，做多資產2<br>
+                                                            Z分數小於負入場閾值(-<span th:text="${entryThreshold}">2.0</span>): 做多資產1，做空資產2<br>
+                                                            Z分數在出場閾值(±<span th:text="${exitThreshold}">0.5</span>)內: 平倉所有倉位
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 價差圖表 -->
+                                    <div class="row mb-4">
+                                        <div class="col-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5 class="card-title">價差圖表 <span class="float-end" id="spreadInfo"></span></h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <!-- 添加可視化圖表 Canvas -->
+                                                    <div class="chart-container mb-3">
+                                                        <canvas id="spreadChart" style="height: 350px"></canvas>
+                                                    </div>
+                                                    
+                                                    <!-- 原ASCII圖表，放在手風琴折疊面板中 -->
+                                                    <div class="accordion" id="spreadDetailAccordion">
+                                                        <div class="accordion-item">
+                                                            <h2 class="accordion-header" id="spreadDetailHeader">
+                                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#spreadDetailCollapse" aria-expanded="false" aria-controls="spreadDetailCollapse">
+                                                                    ASCII 圖表 (原始輸出)
+                                                                </button>
+                                                            </h2>
+                                                            <div id="spreadDetailCollapse" class="accordion-collapse collapse" aria-labelledby="spreadDetailHeader" data-bs-parent="#spreadDetailAccordion">
+                                                                <div class="accordion-body">
+                                                                    <pre class="bg-dark text-light p-3" style="font-size: 0.7em; line-height: 1.2;" th:text="${result.spreadChart}" id="spreadText">價差圖表</pre>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="mt-3">
+                                                        <h6>價差分析說明</h6>
+                                                        <div class="alert alert-info" id="spreadTips">
+                                                            <strong>價差公式:</strong><br>
+                                                            價差 = 資產1價格 - (Alpha + Beta * 資產2價格)<br>
+                                                            Z分數 = (當前價差 - 價差均值) / 價差標準差<br>
+                                                            標準差邊界: 均值 ± 1倍標準差內約68%的數據點；均值 ± 2倍標準差內約95%的數據點
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 操作按鈕 -->
+                                    <div class="row mt-4">
+                                        <div class="col text-center">
+                                            <a href="/backtest" class="btn btn-outline-secondary me-2">
+                                                <i class="fas fa-arrow-left"></i> 返回回測列表
+                                            </a>
+                                            <a href="#" id="saveCombiBtn" class="btn btn-outline-success me-2" th:data-symbol1="${symbol1}" th:data-symbol2="${symbol2}">
+                                                <i class="fas fa-star"></i> 保存交易對組合
+                                            </a>
+                                            <button type="button" class="btn btn-outline-secondary me-2" id="refreshChartsBtn">
+                                                <i class="fas fa-sync-alt"></i> 重新整理圖表
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div th:replace="~{fragments/header :: toast}"></div>
+    <div th:replace="~{fragments/header :: refresh-counter}"></div>
+    
+    <!-- 引入JavaScript庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- 引入Chart.js庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    
+    <!-- 防止擴展衝突 -->
+    <script>
+        // 全局錯誤處理，防止擴展衝突
+        window.addEventListener('error', function(event) {
+            // 檢查錯誤是否與Binance擴展相關
+            if (event.filename && event.filename.includes('inpage.js')) {
+                // 阻止錯誤傳播
+                event.preventDefault();
+                console.warn('已捕獲並阻止Binance擴展相關錯誤:', event.message);
+            }
+        });
+
+        // 捕獲被拒絕的promises
+        window.addEventListener('unhandledrejection', function(event) {
+            // 檢查錯誤信息或堆棧是否與Binance擴展相關
+            if (event.reason && 
+                ((event.reason.stack && event.reason.stack.includes('inpage.js')) || 
+                 (event.reason.message && event.reason.message.includes('Cannot read properties of null')))) {
+                // 阻止錯誤傳播
+                event.preventDefault();
+                console.warn('已捕獲並阻止Binance擴展相關Promise錯誤:', event.reason);
+            }
+        });
+        
+        // 將回測結果數據傳遞給JavaScript
+        window.backtestResult = {
+            stationaryTest: [[${result.stationaryTest}]]
+        };
+    </script>
+
+    <!-- 自定義JavaScript -->
+    <script>
+        $(document).ready(function() {
+            // 設置自動刷新倒數計時
+            let counter = 20;
+            
+            // 更新倒數計時顯示
+            function updateCounter() {
+                $('#refreshCounter').text(counter);
+                counter--;
+                
+                if (counter < 0) {
+                    // 重置計時器並刷新數據
+                    counter = 20;
+                    refreshData();
+                }
+            }
+            
+            // 每秒更新倒數計時
+            setInterval(updateCounter, 1000);
+            
+            // 刷新數據函數
+            function refreshData() {
+                // 如果 refreshCharts 函數存在，則執行它
+                if (typeof window.refreshCharts === 'function') {
+                    window.refreshCharts();
+                }
+                
+                console.log('數據已重新載入，倒數計時已重置');
+            }
+            
+            // 保存交易對組合按鈕點擊事件
+            $('#saveCombiBtn').on('click', function(e) {
+                e.preventDefault();
+                
+                const symbol1 = $(this).data('symbol1');
+                const symbol2 = $(this).data('symbol2');
+                
+                // 顯示處理中提示
+                $('#toastTitle').text('處理中');
+                $('#toastMessage').text('正在保存交易對組合...');
+                var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                toast.show();
+                
+                // 保存交易對組合
+                $.ajax({
+                    url: '/backtest/api/save-combination',
+                    type: 'GET',
+                    data: {
+                        symbol1: symbol1,
+                        symbol2: symbol2
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // 顯示成功消息
+                            $('#toastTitle').text('成功');
+                            $('#toastMessage').text(response.message);
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        } else {
+                            // 顯示錯誤消息
+                            $('#toastTitle').text('錯誤');
+                            $('#toastMessage').text(response.message);
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        // 顯示錯誤消息
+                        $('#toastTitle').text('錯誤');
+                        $('#toastMessage').text('保存交易對組合失敗：' + error);
+                        var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                        toast.show();
+                    }
+                });
+            });
+            
+            // 獲取回測詳情頁面的資產對參數
+            const symbol1 = $('#saveCombiBtn').data('symbol1');
+            const symbol2 = $('#saveCombiBtn').data('symbol2');
+            
+            // 如果在回測詳情頁面，覆蓋 refreshCharts 函數
+            if (symbol1 && symbol2) {
+                window.backtestSymbol1 = symbol1;
+                window.backtestSymbol2 = symbol2;
+                
+                // 覆蓋全局 refreshCharts 函數，加入資產對參數
+                window.originalRefreshCharts = window.refreshCharts;
+                window.refreshCharts = function() {
+                    // 獲取Z分數圖表數據 (帶入資產對參數)
+                    $.ajax({
+                        url: '/api/charts/z-score',
+                        type: 'GET',
+                        data: {
+                            asset1: window.backtestSymbol1,
+                            asset2: window.backtestSymbol2
+                        },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                // 設置ASCII圖表文本
+                                $('#zScoreText').text(response.chart || '暫無數據');
+                                
+                                // 更新Chart.js圖表
+                                try {
+                                    if (response.chartData) {
+                                        let chartData;
+                                        // 檢查是否已經是對象還是需要解析的字符串
+                                        if (typeof response.chartData === 'string') {
+                                            chartData = JSON.parse(response.chartData);
+                                        } else {
+                                            chartData = response.chartData;
+                                        }
+                                        
+                                        // 添加調試信息到控制台
+                                        console.log('Z分數數據解析成功，數據點數量:', chartData.zScores ? chartData.zScores.length : 0);
+                                        
+                                        // 檢查圖表實例是否存在
+                                        if (!window.zScoreChart) {
+                                            window.initCharts(); // 如果不存在則初始化
+                                        } else {
+                                            window.updateZScoreChart(chartData); // 更新現有圖表
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error('解析Z分數圖表數據失敗', e);
+                                    console.log('數據內容:', response.chartData);
+                                }
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('獲取Z分數圖表數據失敗:', error);
+                        }
+                    });
+                    
+                    // 獲取價差圖表數據 (帶入資產對參數)
+                    $.ajax({
+                        url: '/api/charts/spread',
+                        type: 'GET',
+                        data: {
+                            asset1: window.backtestSymbol1,
+                            asset2: window.backtestSymbol2
+                        },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                // 設置ASCII圖表文本
+                                $('#spreadText').text(response.chart || '暫無數據');
+                                
+                                // 更新Chart.js圖表
+                                try {
+                                    if (response.chartData) {
+                                        let chartData;
+                                        // 檢查是否已經是對象還是需要解析的字符串
+                                        if (typeof response.chartData === 'string') {
+                                            chartData = JSON.parse(response.chartData);
+                                        } else {
+                                            chartData = response.chartData;
+                                        }
+                                        
+                                        // 添加調試信息到控制台
+                                        console.log('價差數據解析成功，數據點數量:', chartData.spreads ? chartData.spreads.length : 0);
+                                        
+                                        // 檢查圖表實例是否存在
+                                        if (!window.spreadChart) {
+                                            window.initCharts(); // 如果不存在則初始化
+                                        } else {
+                                            window.updateSpreadChart(chartData); // 更新現有圖表
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error('解析價差圖表數據失敗', e);
+                                    console.log('數據內容:', response.chartData);
+                                }
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('獲取價差圖表數據失敗:', error);
+                        }
+                    });
+                };
+                
+                // 初始觸發圖表刷新
+                setTimeout(function() {
+                    window.refreshCharts();
+                }, 200);
+            }
+
+            // 套用機器人使用此交易對按鈕點擊事件
+            $('#applyToPairBtn').on('click', function() {
+                const symbol1 = $('#saveCombiBtn').data('symbol1');
+                const symbol2 = $('#saveCombiBtn').data('symbol2');
+                
+                if (!symbol1 || !symbol2) {
+                    // 顯示錯誤消息
+                    $('#toastTitle').text('錯誤');
+                    $('#toastMessage').text('無法獲取交易對資訊');
+                    var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                    toast.show();
+                    return;
+                }
+                
+                // 顯示處理中提示
+                $('#toastTitle').text('處理中');
+                $('#toastMessage').text('正在檢查持倉狀態...');
+                var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                toast.show();
+                
+                // 先檢查是否有持倉
+                $.ajax({
+                    url: '/api/position/check-active',
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            if (response.hasPositions) {
+                                // 如果有持倉，顯示錯誤消息
+                                $('#toastTitle').text('無法修改');
+                                $('#toastMessage').text('當前有持倉，無法修改交易對設定！');
+                                var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                                toast.show();
+                            } else {
+                                // 沒有持倉，可以更新交易對
+                                updateTradingPair(symbol1, symbol2);
+                            }
+                        } else {
+                            // 檢查持倉出錯，顯示錯誤消息
+                            $('#toastTitle').text('錯誤');
+                            $('#toastMessage').text('檢查持倉狀態失敗：' + (response.message || '未知錯誤'));
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        // 檢查持倉請求出錯，顯示錯誤消息
+                        $('#toastTitle').text('錯誤');
+                        $('#toastMessage').text('檢查持倉狀態失敗：' + error);
+                        var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                        toast.show();
+                    }
+                });
+            });
+            
+            // 更新交易對設定的函數
+            function updateTradingPair(symbol1, symbol2) {
+                // 顯示處理中提示
+                $('#toastTitle').text('處理中');
+                $('#toastMessage').text('正在更新交易對設定...');
+                var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                toast.show();
+                
+                // 調用 TradingConfigController 的 update-pair API
+                $.ajax({
+                    url: '/settings/trading/update-pair',
+                    type: 'POST',
+                    data: {
+                        asset1: symbol1,
+                        asset2: symbol2
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // 顯示成功消息
+                            $('#toastTitle').text('成功');
+                            $('#toastMessage').text('已成功套用此交易對到機器人設定');
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        } else {
+                            // 顯示錯誤消息
+                            $('#toastTitle').text('錯誤');
+                            $('#toastMessage').text(response.message || '更新交易對設定失敗');
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        // 顯示錯誤消息
+                        $('#toastTitle').text('錯誤');
+                        $('#toastMessage').text('更新交易對設定失敗：' + (xhr.responseJSON?.message || error));
+                        var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                        toast.show();
+                    }
+                });
+            }
+            
+            // 刷新按鈕點擊事件
+            $('#refreshChartsBtn').on('click', function() {
+                // 重置倒數計時並立即刷新數據
+                counter = 20;
+                refreshData();
+            });
+        });
+    </script>
+    <script src="/js/charts.js"></script>
+    <script src="/js/backtest-details.js"></script>
+</body>
+</html>

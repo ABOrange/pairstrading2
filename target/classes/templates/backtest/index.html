@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-tw" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: common_header(~{::title})}">
+    <title>交易對回測分析 - 配對交易機器人</title>
+</head>
+<body>
+    <div th:replace="~{fragments/header :: header}"></div>
+    
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 側邊欄 -->
+            <div th:replace="fragments/sidebar :: sidebar"></div>
+            
+            <!-- 主要內容區 -->
+            <div class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="container mt-4 mb-5">
+                    <div class="row mb-4">
+                        <div class="col">
+                            <h2><i class="fas fa-chart-bar"></i> 交易對回測分析</h2>
+                            <p class="text-muted">分析多個交易對的配對交易策略表現，找出最佳交易對組合。</p>
+                            <hr>
+                        </div>
+                    </div>
+                    
+                    <!-- 錯誤提示 -->
+                    <div class="row mb-4" th:if="${error != null}">
+                        <div class="col">
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-circle"></i> <span th:text="${error}">錯誤信息</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 操作區域 -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <i class="fas fa-plus-circle"></i> 創建新的交易對分析
+                                </div>
+                                <div class="card-body">
+                                    <form id="newPairForm">
+                                        <div class="mb-3">
+                                            <label for="symbol1" class="form-label">交易對1:</label>
+                                            <select class="form-select select2-search" id="symbol1" name="symbol1" required>
+                                                <option value="">請選擇交易對</option>
+                                                <option th:each="pair : ${availablePairs}" th:value="${pair}" th:text="${pair}"></option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="symbol2" class="form-label">交易對2:</label>
+                                            <select class="form-select select2-search" id="symbol2" name="symbol2" required>
+                                                <option value="">請選擇交易對</option>
+                                                <option th:each="pair : ${availablePairs}" th:value="${pair}" th:text="${pair}"></option>
+                                            </select>
+                                        </div>
+<!--                                        <div class="mb-3">-->
+<!--                                            <label for="backTestDays" class="form-label">回測天數:</label>-->
+<!--                                            <input type="number" class="form-control" id="backTestDays" name="backTestDays" min="1" max="90" value="30">-->
+<!--                                            <div class="form-text">選擇1到90天之間的回測時間範圍。</div>-->
+<!--                                        </div>-->
+                                        <div class="mb-3 form-check">
+                                            <input type="checkbox" class="form-check-input" id="saveCombination" name="saveCombination">
+                                            <label class="form-check-label" for="saveCombination">保存此交易對組合到收藏</label>
+                                        </div>
+                                        <div class="d-grid gap-2">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-play"></i> 執行回測分析
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-success text-white">
+                                    <i class="fas fa-star"></i> 已保存的交易對組合
+                                </div>
+                                <div class="card-body">
+                                    <div th:if="${savedPairCombinations.isEmpty()}">
+                                        <p class="text-muted">尚未保存任何交易對組合。</p>
+                                    </div>
+                                    <div th:if="${!savedPairCombinations.isEmpty()}" class="list-group" id="savedCombinationsList">
+                                        <div th:each="combination : ${savedPairCombinations}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-exchange-alt me-2"></i>
+                                                <span th:text="${combination}">BTCUSDT,ETHUSDT</span>
+                                            </div>
+                                            <div>
+                                                <button class="btn btn-sm btn-outline-primary view-pair-btn" th:data-combination="${combination}">
+                                                    <i class="fas fa-chart-line"></i> 查看分析
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger delete-pair-btn" th:data-combination="${combination}">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 d-grid gap-2">
+                                        <button id="batchBackTestBtn" class="btn btn-success" th:disabled="${savedPairCombinations.isEmpty()}">
+                                            <i class="fas fa-tasks"></i> 批量回測所有交易對組合
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 結果預覽區域 -->
+                    <div class="row mt-4" id="resultPreviewSection" style="display: none;">
+                        <div class="col">
+                            <div class="card">
+                                <div class="card-header bg-info text-white">
+                                    <i class="fas fa-chart-line"></i> 回測結果預覽
+                                    <button type="button" class="btn-close float-end" aria-label="Close" id="closePreviewBtn"></button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="backTestResultPreview">
+                                        <!-- 結果將在這裡動態載入 -->
+                                        <div class="text-center text-muted">
+                                            <div class="spinner-border" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            <p>載入回測結果...</p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 text-center" id="detailLinkContainer">
+                                        <a href="#" id="viewDetailLink" class="btn btn-info btn-lg" style="font-weight: bold;">
+                                            <i class="fas fa-search-plus"></i> 查看完整分析
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 批量回測進度區域 -->
+                    <div class="row mt-4" id="batchProgressSection" style="display: none;">
+                        <div class="col">
+                            <div class="card">
+                                <div class="card-header bg-warning text-dark">
+                                    <span id="batchProgressHeader"><i class="fas fa-spinner fa-spin"></i> 批量回測進行中</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="progress mb-3">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" id="batchProgressBar"></div>
+                                    </div>
+                                    <p id="batchProgressStatus">正在初始化批量回測...</p>
+                                    <div class="text-center mt-3">
+                                        <button id="viewBatchResultsBtn" class="btn btn-warning" disabled>
+                                            <i class="fas fa-table"></i> 查看批量回測結果
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div th:replace="fragments/header :: toast"></div>
+    
+    <!-- 引入JavaScript庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        /* 調整 Select2 樣式以匹配 Bootstrap */
+        .select2-container--default .select2-selection--single {
+            height: 38px;
+            padding: 5px 12px;
+            font-size: 1rem;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 24px;
+            padding-left: 0;
+        }
+        .select2-container--default .select2-results__option--highlighted[aria-selected] {
+            background-color: #0d6efd;
+        }
+        .select2-dropdown {
+            border: 1px solid #ced4da;
+        }
+        .select2-search--dropdown .select2-search__field {
+            padding: 6px;
+            border: 1px solid #ced4da;
+        }
+    </style>
+
+    <!-- 自定義JavaScript -->
+    <script>
+        $(document).ready(function() {
+            // 初始化Select2下拉搜尋框並設定自動聚焦
+            $('.select2-search').select2({
+                placeholder: '請選擇或輸入搜尋交易對',
+                allowClear: true,
+                width: '100%'
+            });
+
+            // Select2開啟時自動聚焦到搜尋框
+            $(document).on('select2:open', function() {
+                // 確保DOM元素完全加載後再聚焦
+                setTimeout(function() {
+                    // 針對性地選擇當前打開的下拉選單中的輸入框
+                    document.querySelector('.select2-container--open .select2-search__field').focus();
+                }, 0);
+            });
+
+
+
+
+
+
+            
+            // 直接綁定查看詳情按鈕事件
+            $(document).on('click', '#viewDetailLink', function(e) {
+                e.preventDefault();
+                const url = $(this).attr('href');
+                console.log('查看詳情按鈕被點擊，URL:', url);
+                
+                if (url && url !== '#') {
+                    window.location.href = url;
+                } else {
+                    console.error('查看詳情按鈕的URL無效');
+                    $('#toastTitle').text('錯誤');
+                    $('#toastMessage').text('無法跳轉到詳情頁面，URL無效');
+                    var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                    toast.show();
+                }
+                return false;
+            });
+            // 表單提交處理
+            $('#newPairForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const symbol1 = $('#symbol1').val();
+                const symbol2 = $('#symbol2').val();
+                const days = $('#backTestDays').val();
+                const saveCombination = $('#saveCombination').is(':checked');
+                
+                if (symbol1 === symbol2) {
+                    $('#toastTitle').text('錯誤');
+                    $('#toastMessage').text('請選擇兩個不同的交易對');
+                    var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                    toast.show();
+                    return;
+                }
+                
+                // 顯示處理中提示
+                $('#toastTitle').text('處理中');
+                $('#toastMessage').text('正在執行交易對回測分析...');
+                var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                toast.show();
+                
+                // 如果選擇保存組合，先保存
+                if (saveCombination) {
+                    $.ajax({
+                        url: '/backtest/api/save-combination',
+                        type: 'GET',
+                        data: {
+                            symbol1: symbol1,
+                            symbol2: symbol2
+                        },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                // 重新加載保存的組合列表
+                                loadSavedCombinations();
+                                
+                                // 顯示成功消息
+                                $('#toastTitle').text('成功');
+                                $('#toastMessage').text('已保存交易對組合到收藏');
+                                var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                                toast.show();
+                            }
+                        }
+                    });
+                }
+                
+                // 執行回測
+                $.ajax({
+                    url: '/backtest/api/backtest-pair',
+                    type: 'GET',
+                    data: {
+                        symbol1: symbol1,
+                        symbol2: symbol2,
+                        // 如果days <= 0，後端會自動使用系統窗口大小計算
+                        // days: days,
+                        // interval: "1h" // 預設使用1h間隔
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            console.log("回測API返回成功:", response);
+                            
+                            // 顯示結果預覽
+                            displayResultPreview(response.result);
+                            
+                            // 生成詳情鏈接URL
+                            const detailUrl = '/backtest/details?symbol1=' + encodeURIComponent(symbol1) + '&symbol2=' + encodeURIComponent(symbol2) + '&interval=1h';
+                            
+                            // 設置詳情鏈接，使用直接的 HTML 頁面跳轉方式
+                            var detailButton = '<a href="' + detailUrl + '" class="btn btn-info btn-lg fw-bold" onclick="javascript:void(0);">' +
+                                              '<i class="fas fa-search-plus"></i> 查看完整分析</a>';
+                            $('#detailLinkContainer').html(detailButton);
+                            
+                            // 顯示結果預覽區域
+                            $('#resultPreviewSection').show();
+                            
+                            // 隱藏批量回測進度區域
+                            $('#batchProgressSection').hide();
+                        } else {
+                            // 顯示錯誤消息
+                            $('#toastTitle').text('錯誤');
+                            $('#toastMessage').text(response.message);
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        // 顯示錯誤消息
+                        $('#toastTitle').text('錯誤');
+                        $('#toastMessage').text('執行回測失敗：' + error);
+                        var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                        toast.show();
+                    }
+                });
+            });
+            
+            // 查看已保存交易對組合
+            $(document).on('click', '.view-pair-btn', function() {
+                const combination = $(this).data('combination');
+                const pairs = combination.split(',');
+                
+                if (pairs.length === 2) {
+                    // 顯示處理中提示
+                    $('#toastTitle').text('處理中');
+                    $('#toastMessage').text('正在載入交易對分析...');
+                    var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                    toast.show();
+                    
+                    // 生成詳情鏈接URL
+                    const detailUrl = '/backtest/details?symbol1=' + encodeURIComponent(pairs[0]) + '&symbol2=' + encodeURIComponent(pairs[1]) + '&interval=1h';
+                    
+                    // 設置詳情鏈接
+                    $('#viewDetailLink').attr('href', detailUrl);
+                    
+                    // 確保鏈接按鈕可點擊
+                    $('#viewDetailLink').off('click').on('click', function() {
+                        window.location.href = detailUrl;
+                        return false;
+                    });
+                    
+                    // 執行回測
+                    $.ajax({
+                        url: '/backtest/api/backtest-pair',
+                        type: 'GET',
+                        data: {
+                            symbol1: pairs[0],
+                            symbol2: pairs[1],
+                            // 不指定 days 參數，讓後端使用系統窗口大小計算
+                            // interval: "1h" // 預設使用1h間隔
+                        },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                // 顯示結果預覽
+                                displayResultPreview(response.result);
+                                
+                                // 生成詳情鏈接URL
+                                const detailUrl = '/backtest/details?symbol1=' + encodeURIComponent(pairs[0]) + '&symbol2=' + encodeURIComponent(pairs[1]) + '&interval=1h';
+                                
+                                // 設置詳情鏈接，使用直接的 HTML 頁面跳轉方式
+                                var detailButton = '<a href="' + detailUrl + '" class="btn btn-info btn-lg fw-bold" onclick="javascript:void(0);">' +
+                                                  '<i class="fas fa-search-plus"></i> 查看完整分析</a>';
+                                $('#detailLinkContainer').html(detailButton);
+                                
+                                // 顯示結果預覽區域
+                                $('#resultPreviewSection').show();
+                            } else {
+                                // 顯示錯誤消息
+                                $('#toastTitle').text('錯誤');
+                                $('#toastMessage').text(response.message);
+                                var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                                toast.show();
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            // 顯示錯誤消息
+                            $('#toastTitle').text('錯誤');
+                            $('#toastMessage').text('載入交易對分析失敗：' + error);
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        }
+                    });
+                }
+            });
+            
+            // 刪除已保存交易對組合
+            $(document).on('click', '.delete-pair-btn', function() {
+                const combination = $(this).data('combination');
+                
+                if (confirm('確定要刪除交易對組合 ' + combination + ' 嗎？')) {
+                    $.ajax({
+                        url: '/backtest/api/delete-combination',
+                        type: 'GET',
+                        data: {
+                            combination: combination
+                        },
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                // 重新加載保存的組合列表
+                                loadSavedCombinations();
+                                
+                                // 顯示成功消息
+                                $('#toastTitle').text('成功');
+                                $('#toastMessage').text(response.message);
+                                var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                                toast.show();
+                            } else {
+                                // 顯示錯誤消息
+                                $('#toastTitle').text('錯誤');
+                                $('#toastMessage').text(response.message);
+                                var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                                toast.show();
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            // 顯示錯誤消息
+                            $('#toastTitle').text('錯誤');
+                            $('#toastMessage').text('刪除交易對組合失敗：' + error);
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        }
+                    });
+                }
+            });
+            
+            // 批量回測按鈕點擊事件
+            $('#batchBackTestBtn').on('click', function() {
+                // 顯示處理中提示
+                $('#toastTitle').text('處理中');
+                $('#toastMessage').text('正在初始化批量回測...');
+                var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                toast.show();
+                
+                // 顯示批量回測進度區域
+                $('#resultPreviewSection').hide();
+                $('#batchProgressSection').show();
+                
+                // 重置進度條
+                $('#batchProgressBar').css('width', '0%');
+                $('#batchProgressStatus').text('正在初始化批量回測...');
+                $('#viewBatchResultsBtn').prop('disabled', true);
+                
+                // 執行批量回測
+                $.ajax({
+                    url: '/backtest/api/batch-backtest',
+                    type: 'GET',
+                    data: {
+                        // 不指定 days 參數，讓後端使用系統窗口大小計算
+                        // interval: "1h" // 預設使用1h間隔
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // 更新進度條為成功綠色
+                            $('#batchProgressBar')
+                                .removeClass('progress-bar-striped progress-bar-animated')
+                                .addClass('bg-success')
+                                .css('width', '100%');
+                            $('#batchProgressStatus').text('批量回測完成，成功回測 ' + Object.keys(response.results).length + ' 個交易對組合');
+                            $('#viewBatchResultsBtn').prop('disabled', false);
+                            
+                            // 更新卡片標題，移除轉圈動畫
+                            $('#batchProgressHeader').html('<i class="fas fa-check-circle text-success"></i> 批量回測已完成');
+                            
+                            // 顯示成功消息
+                            $('#toastTitle').text('成功');
+                            $('#toastMessage').text(response.message);
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        } else {
+                            // 更新進度條為警告黃色
+                            $('#batchProgressBar')
+                                .removeClass('progress-bar-striped progress-bar-animated')
+                                .addClass('bg-warning')
+                                .css('width', '100%');
+                            $('#batchProgressStatus').text('批量回測完成，但沒有獲取到有效結果');
+                            
+                            // 更新卡片標題，顯示警告圖標
+                            $('#batchProgressHeader').html('<i class="fas fa-exclamation-triangle text-warning"></i> 批量回測已完成');
+                            
+                            // 顯示警告消息
+                            $('#toastTitle').text(response.status === 'warning' ? '警告' : '錯誤');
+                            $('#toastMessage').text(response.message);
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        // 更新進度條為錯誤紅色
+                        $('#batchProgressBar')
+                            .removeClass('progress-bar-striped progress-bar-animated')
+                            .addClass('bg-danger')
+                            .css('width', '100%');
+                        $('#batchProgressStatus').text('批量回測失敗');
+                        
+                        // 更新卡片標題，顯示錯誤圖標
+                        $('#batchProgressHeader').html('<i class="fas fa-times-circle text-danger"></i> 批量回測已失敗');
+                        
+                        // 顯示錯誤消息
+                        $('#toastTitle').text('錯誤');
+                        $('#toastMessage').text('執行批量回測失敗：' + error);
+                        var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                        toast.show();
+                    }
+                });
+            });
+            
+            // 查看批量回測結果按鈕點擊事件
+            $('#viewBatchResultsBtn').on('click', function() {
+                window.location.href = '/backtest/batch-results';
+            });
+            
+            // 關閉預覽區域按鈕點擊事件
+            $('#closePreviewBtn').on('click', function() {
+                $('#resultPreviewSection').hide();
+            });
+            
+            // 加載已保存的交易對組合
+            function loadSavedCombinations() {
+                $.ajax({
+                    url: '/backtest/api/saved-combinations',
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            const combinations = response.combinations;
+                            
+                            // 清空現有列表
+                            $('#savedCombinationsList').empty();
+                            
+                            if (combinations.length === 0) {
+                                $('#savedCombinationsList').append('<p class="text-muted">尚未保存任何交易對組合。</p>');
+                                $('#batchBackTestBtn').prop('disabled', true);
+                            } else {
+                                // 添加新項目
+                                combinations.forEach(function(combination) {
+                                    const item = $('<div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">');
+                                    
+                                    const left = $('<div class="d-flex align-items-center">');
+                                    left.append('<i class="fas fa-exchange-alt me-2"></i>');
+                                    left.append('<span>' + combination + '</span>');
+                                    
+                                    const right = $('<div>');
+                                    const viewBtn = $('<button class="btn btn-sm btn-outline-primary view-pair-btn me-2">');
+                                    viewBtn.html('<i class="fas fa-chart-line"></i> 查看分析');
+                                    viewBtn.data('combination', combination);
+                                    
+                                    const deleteBtn = $('<button class="btn btn-sm btn-outline-danger delete-pair-btn">');
+                                    deleteBtn.html('<i class="fas fa-trash"></i>');
+                                    deleteBtn.data('combination', combination);
+                                    
+                                    right.append(viewBtn);
+                                    right.append(deleteBtn);
+                                    
+                                    item.append(left);
+                                    item.append(right);
+                                    
+                                    $('#savedCombinationsList').append(item);
+                                });
+                                
+                                $('#batchBackTestBtn').prop('disabled', false);
+                            }
+                        } else {
+                            // 顯示錯誤消息
+                            $('#toastTitle').text('錯誤');
+                            $('#toastMessage').text(response.message);
+                            var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                            toast.show();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        // 顯示錯誤消息
+                        $('#toastTitle').text('錯誤');
+                        $('#toastMessage').text('加載已保存交易對組合失敗：' + error);
+                        var toast = new bootstrap.Toast(document.getElementById('resultToast'));
+                        toast.show();
+                    }
+                });
+            }
+            
+            // 顯示結果預覽
+            function displayResultPreview(result) {
+                // 顯示結果預覽區域
+                $('#resultPreviewSection').show();
+                $('#batchProgressSection').hide();
+                
+                console.log("顯示預覽結果:", result);
+                
+                // 檢查結果對象是否有效
+                if (!result || typeof result !== 'object') {
+                    console.error("預覽結果無效:", result);
+                    $('#backTestResultPreview').html('<div class="alert alert-danger">無法顯示預覽，回測結果無效</div>');
+                    return;
+                }
+                
+                // 設置預覽內容
+                try {
+                    // 安全獲取數值，確保在使用 toFixed 前值存在且是數字
+                    const safeNumber = (value, decimals = 4) => {
+                        return (value !== undefined && value !== null && !isNaN(value)) ? value.toFixed(decimals) : 'N/A';
+                    };
+                    
+                    const previewHtml = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>交易對: ${result.asset1 || 'N/A'} <i class="fas fa-exchange-alt"></i> ${result.asset2 || 'N/A'}</h5>
+                                <p><strong>相關性:</strong> ${safeNumber(result.correlation)}</p>
+                                <p><strong>回歸係數 (Beta):</strong> ${safeNumber(result.beta)}</p>
+                                <p><strong>Z分數:</strong> ${safeNumber(result.zscore)}</p>
+                                <p><strong>回測期間套利次數:</strong> <span class="${getArbitrageClass(result.arbitrageCount)}">${result.arbitrageCount || 0} 次</span></p>
+                                <p><strong>回測期間爆倉次數:</strong> <span class="${getLiquidationClass(result.liquidationCount)}">${result.liquidationCount || 0} 次</span></p>
+                                <p><strong>信號類型:</strong> ${getSignalTypeDescription(result.signalType, result.asset1, result.asset2)}</p>
+                                <p><strong>信號強度:</strong> <span class="${getSignalRatingClass(result.signalRating)}">${result.signalRating || 'N/A'}</span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        Z分數圖表
+                                    </div>
+                                    <div class="card-body">
+                                        <pre style="font-size: 0.7em; line-height: 1.2;">${result.zscoreChart || '沒有可用的圖表數據'}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    $('#backTestResultPreview').html(previewHtml);
+                    console.log("預覽內容已設置");
+                } catch (error) {
+                    console.error("生成預覽HTML時出錯:", error);
+                    $('#backTestResultPreview').html('<div class="alert alert-danger">生成預覽內容時出錯: ' + error.message + '</div>');
+                }
+            }
+            
+            // 獲取信號類型描述
+            function getSignalTypeDescription(signalType, asset1, asset2) {
+                switch (signalType) {
+                    case 'LONG_ASSET1_SHORT_ASSET2':
+                        return `做多 ${asset1}, 做空 ${asset2}`;
+                    case 'SHORT_ASSET1_LONG_ASSET2':
+                        return `做空 ${asset1}, 做多 ${asset2}`;
+                    case 'CLOSE_POSITIONS':
+                        return '平倉所有倉位';
+                    case 'NO_SIGNAL':
+                    default:
+                        return '沒有交易信號';
+                }
+            }
+            
+            // 獲取信號強度對應的CSS類
+            function getSignalRatingClass(rating) {
+                switch (rating) {
+                    case '極強':
+                        return 'text-danger fw-bold';
+                    case '很強':
+                        return 'text-danger';
+                    case '強':
+                        return 'text-warning fw-bold';
+                    case '中等':
+                        return 'text-warning';
+                    case '弱':
+                        return 'text-info';
+                    case '很弱':
+                    default:
+                        return 'text-muted';
+                }
+            }
+            
+            // 獲取套利次數對應的CSS類
+            function getArbitrageClass(count) {
+                if (count > 10) return 'text-success fw-bold';
+                if (count > 5) return 'text-success';
+                if (count > 0) return 'text-info';
+                return 'text-muted';
+            }
+            
+            // 獲取爆倉次數對應的CSS類
+            function getLiquidationClass(count) {
+                if (count > 5) return 'text-danger fw-bold';
+                if (count > 2) return 'text-danger';
+                if (count > 0) return 'text-warning';
+                return 'text-success';
+            }
+        });
+    </script>
+</body>
+</html>
