@@ -32,6 +32,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
@@ -53,12 +54,12 @@ public class BinanceApiServiceImpl implements BinanceApiService {
     public BinanceApiServiceImpl(BinanceConfig binanceConfig, ObjectMapper objectMapper) {
         this.binanceConfig = binanceConfig;
         this.objectMapper = objectMapper;
-        
+
         RequestConfig requestConfig = RequestConfig.custom()
                 .setConnectTimeout(org.apache.hc.core5.util.Timeout.ofMilliseconds(binanceConfig.getConnectionTimeout()))
                 .setResponseTimeout(org.apache.hc.core5.util.Timeout.ofMilliseconds(binanceConfig.getReadTimeout()))
                 .build();
-        
+
         this.httpClient = HttpClients.custom()
                 .setDefaultRequestConfig(requestConfig)
                 .build();
@@ -69,16 +70,16 @@ public class BinanceApiServiceImpl implements BinanceApiService {
         try {
             String endpoint = "/fapi/v2/balance";
             String response = callApi(endpoint, null, "GET", true);
-            
+
             List<Map<String, Object>> balances = objectMapper.readValue(response, new TypeReference<List<Map<String, Object>>>() {});
-            
+
             Map<String, BigDecimal> balanceMap = new HashMap<>();
             for (Map<String, Object> balance : balances) {
                 String asset = (String) balance.get("asset");
                 BigDecimal availableBalance = new BigDecimal(balance.get("availableBalance").toString());
                 balanceMap.put(asset, availableBalance);
             }
-            
+
             return balanceMap;
         } catch (Exception e) {
             log.error("獲取帳戶餘額失敗", e);
@@ -92,10 +93,10 @@ public class BinanceApiServiceImpl implements BinanceApiService {
             String endpoint = "/fapi/v1/ticker/price";
             Map<String, Object> params = new HashMap<>();
             params.put("symbol", symbol);
-            
+
             String response = callApi(endpoint, params, "GET", false);
             Map<String, Object> priceData = objectMapper.readValue(response, Map.class);
-            
+
             return new BigDecimal(priceData.get("price").toString());
         } catch (Exception e) {
             log.error("獲取最新價格失敗: {}", symbol, e);
@@ -110,14 +111,14 @@ public class BinanceApiServiceImpl implements BinanceApiService {
             Map<String, Object> params = new HashMap<>();
             params.put("symbol", symbol);
             params.put("interval", interval);
-            
+
             if (limit != null && limit > 0) {
                 params.put("limit", limit);
             }
-            
+
             String response = callApi(endpoint, params, "GET", false);
             List<List<Object>> rawData = objectMapper.readValue(response, new TypeReference<List<List<Object>>>() {});
-            
+
             List<CandlestickData> candlesticks = new ArrayList<>();
             for (List<Object> candle : rawData) {
                 CandlestickData candlestick = CandlestickData.builder()
@@ -133,10 +134,10 @@ public class BinanceApiServiceImpl implements BinanceApiService {
                         .takerBuyBaseAssetVolume(new BigDecimal(candle.get(9).toString()))
                         .takerBuyQuoteAssetVolume(new BigDecimal(candle.get(10).toString()))
                         .build();
-                
+
                 candlesticks.add(candlestick);
             }
-            
+
             return candlesticks;
         } catch (Exception e) {
             log.error("獲取K線數據失敗: {}", symbol, e);
@@ -149,10 +150,10 @@ public class BinanceApiServiceImpl implements BinanceApiService {
         try {
             String endpoint = "/fapi/v1/exchangeInfo";
             String response = callApi(endpoint, null, "GET", false);
-            
+
             JsonNode root = objectMapper.readTree(response);
             JsonNode symbols = root.get("symbols");
-            
+
             for (JsonNode symbolNode : symbols) {
                 if (symbol.equals(symbolNode.get("symbol").asText())) {
                     return SymbolInfo.builder()
@@ -174,7 +175,7 @@ public class BinanceApiServiceImpl implements BinanceApiService {
                             .build();
                 }
             }
-            
+
             throw new BinanceApiException("未找到交易對資訊: " + symbol);
         } catch (BinanceApiException e) {
             throw e;
@@ -189,14 +190,14 @@ public class BinanceApiServiceImpl implements BinanceApiService {
         try {
             String endpoint = "/fapi/v2/positionRisk";
             Map<String, Object> params = new HashMap<>();
-            
+
             if (symbol != null && !symbol.isEmpty()) {
                 params.put("symbol", symbol);
             }
-            
+
             String response = callApi(endpoint, params, "GET", true);
             List<Map<String, Object>> positions = objectMapper.readValue(response, new TypeReference<List<Map<String, Object>>>() {});
-            
+
             List<PositionInfo> positionInfoList = new ArrayList<>();
             for (Map<String, Object> position : positions) {
                 // 只返回有實際倉位的資訊
@@ -204,7 +205,7 @@ public class BinanceApiServiceImpl implements BinanceApiService {
                 if (positionAmt.compareTo(BigDecimal.ZERO) == 0) {
                     continue;
                 }
-                
+
                 PositionInfo positionInfo = PositionInfo.builder()
                         .symbol((String) position.get("symbol"))
                         .positionSide((String) position.get("positionSide"))
@@ -212,15 +213,22 @@ public class BinanceApiServiceImpl implements BinanceApiService {
                         .markPrice(new BigDecimal(position.get("markPrice").toString()))
                         .positionAmt(positionAmt)
                         .unrealizedProfit(new BigDecimal(position.get("unRealizedProfit").toString()))
+                        .unrealizedProfitPercentage(calculateUnrealizedProfitPercentage(
+                                new BigDecimal(position.get("unRealizedProfit").toString()),
+                                new BigDecimal(position.get("markPrice").toString()),
+                                new BigDecimal(position.get("positionAmt").toString()),
+                                new BigDecimal(position.get("leverage").toString())
+                        ))
                         .liquidationPrice(new BigDecimal(position.get("liquidationPrice").toString()))
                         .leverage(new BigDecimal(position.get("leverage").toString()))
                         .isolated("ISOLATED".equals(position.get("marginType")))
                         .updateTime(Long.parseLong(position.get("updateTime").toString()))
                         .build();
-                
+
                 positionInfoList.add(positionInfo);
+                System.out.println("~~~~~~~~POSITION"+positionInfoList);
             }
-            
+
             return positionInfoList;
         } catch (Exception e) {
             log.error("獲取持倉信息失敗", e);
@@ -235,21 +243,21 @@ public class BinanceApiServiceImpl implements BinanceApiService {
             Map<String, Object> params = new HashMap<>();
             params.put("symbol", symbol);
             params.put("side", side);
-            
+
             if (positionSide != null && !positionSide.isEmpty()) {
                 params.put("positionSide", positionSide);
             }
-            
+
             params.put("type", type);
             params.put("quantity", quantity.toString());
-            
+
             if (price != null && !"MARKET".equals(type)) {
                 params.put("price", price.toString());
                 params.put("timeInForce", "GTC"); // 除非被取消，否則訂單將一直有效
             }
 
             params.put("newClientOrderId", "pairs_trading_" + System.currentTimeMillis());
-            
+
             String response = callApi(endpoint, params, "POST", true);
             return objectMapper.readValue(response, OrderResponse.class);
         } catch (Exception e) {
@@ -264,7 +272,7 @@ public class BinanceApiServiceImpl implements BinanceApiService {
             // 先檢查訂單是否存在且可以取消
             List<OrderResponse> openOrders = getOpenOrders(symbol);
             boolean orderExists = false;
-            
+
             for (OrderResponse order : openOrders) {
                 if (order.getOrderId().equals(orderId)) {
                     orderExists = true;
@@ -272,21 +280,21 @@ public class BinanceApiServiceImpl implements BinanceApiService {
                     break;
                 }
             }
-            
+
             if (!orderExists) {
                 log.warn("找不到要取消的訂單: 交易對={}, 訂單ID={}", symbol, orderId);
                 return false;
             }
-            
+
             // 執行取消訂單操作
             String endpoint = "/fapi/v1/order";
             Map<String, Object> params = new HashMap<>();
             params.put("symbol", symbol);
             params.put("orderId", orderId);
-            
+
             String response = callApi(endpoint, params, "DELETE", true);
             OrderResponse cancelResponse = objectMapper.readValue(response, OrderResponse.class);
-            
+
             return cancelResponse != null && cancelResponse.getOrderId() != null;
         } catch (Exception e) {
             log.error("取消訂單失敗: {}, orderId: {}", symbol, orderId, e);
@@ -299,11 +307,11 @@ public class BinanceApiServiceImpl implements BinanceApiService {
         try {
             String endpoint = "/fapi/v1/openOrders";
             Map<String, Object> params = new HashMap<>();
-            
+
             if (symbol != null && !symbol.isEmpty()) {
                 params.put("symbol", symbol);
             }
-            
+
             String response = callApi(endpoint, params, "GET", true);
             return objectMapper.readValue(response, new TypeReference<List<OrderResponse>>() {});
         } catch (Exception e) {
@@ -316,63 +324,63 @@ public class BinanceApiServiceImpl implements BinanceApiService {
     public boolean closeAllPositions(String symbol) {
         try {
             List<PositionInfo> positions = getPositionInfo(symbol);
-            
+
             for (PositionInfo position : positions) {
                 String side = position.isLongPosition() ? "SELL" : "BUY";
                 String positionSide = position.getPositionSide();
                 BigDecimal quantity = position.getAbsolutePositionSize();
-                
+
                 placeOrder(position.getSymbol(), side, positionSide, "MARKET", quantity, null);
             }
-            
+
             return true;
         } catch (Exception e) {
             log.error("關閉所有倉位失敗: {}", symbol, e);
             throw new BinanceApiException("關閉所有倉位失敗: " + e.getMessage(), e);
         }
     }
-    
+
     @Override
     public List<String> getAvailableFuturesPairs() {
         try {
             String endpoint = "/fapi/v1/exchangeInfo";
             String response = callApi(endpoint, null, "GET", false);
-            
+
             JsonNode root = objectMapper.readTree(response);
             JsonNode symbols = root.get("symbols");
-            
+
             List<String> availablePairs = new ArrayList<>();
-            
+
             for (JsonNode symbolNode : symbols) {
                 // 只返回正在交易中的交易對
                 if ("TRADING".equals(symbolNode.get("status").asText())) {
                     availablePairs.add(symbolNode.get("symbol").asText());
                 }
             }
-            
+
             // 按英文字母順序排序
             Collections.sort(availablePairs);
-            
+
             return availablePairs;
         } catch (Exception e) {
             log.error("獲取可用交易對失敗", e);
             throw new BinanceApiException("獲取可用交易對失敗: " + e.getMessage(), e);
         }
     }
-    
+
     @Override
     public PriceFilter getPriceFilter(String symbol) {
         try {
             String endpoint = "/fapi/v1/exchangeInfo";
             String response = callApi(endpoint, null, "GET", false);
-            
+
             JsonNode root = objectMapper.readTree(response);
             JsonNode symbols = root.get("symbols");
-            
+
             for (JsonNode symbolNode : symbols) {
                 if (symbol.equals(symbolNode.get("symbol").asText())) {
                     JsonNode filters = symbolNode.get("filters");
-                    
+
                     // 查找價格過濾器
                     for (JsonNode filter : filters) {
                         if ("PRICE_FILTER".equals(filter.get("filterType").asText())) {
@@ -385,14 +393,14 @@ public class BinanceApiServiceImpl implements BinanceApiService {
                     }
                 }
             }
-            
+
             throw new BinanceApiException("未找到交易對價格過濾器: " + symbol);
         } catch (Exception e) {
             log.error("獲取價格過濾器失敗: {}", symbol, e);
             throw new BinanceApiException("獲取價格過濾器失敗: " + e.getMessage(), e);
         }
     }
-    
+
     @Override
     public boolean setLeverage(String symbol, int leverage) {
         try {
@@ -400,33 +408,33 @@ public class BinanceApiServiceImpl implements BinanceApiService {
             Map<String, Object> params = new HashMap<>();
             params.put("symbol", symbol);
             params.put("leverage", leverage);
-            
+
             String response = callApi(endpoint, params, "POST", true);
-            
+
             log.info("設定 {} 槓桿倍率為 {}, 回應: {}", symbol, leverage, response);
-            
+
             // 檢查回應是否包含正確的槓桿值
             JsonNode root = objectMapper.readTree(response);
             int returnedLeverage = root.get("leverage").asInt();
-            
+
             return returnedLeverage == leverage;
         } catch (Exception e) {
             log.error("設定槓桿倍率失敗: {}, 槓桿: {}", symbol, leverage, e);
             return false;
         }
     }
-    
+
     @Override
     public BigDecimal adjustPriceToTickSize(String symbol, BigDecimal price) {
         try {
             PriceFilter priceFilter = getPriceFilter(symbol);
             BigDecimal tickSize = priceFilter.getTickSize();
-            
+
             // 如果價格已經是有效價格，則直接返回
             if (price.remainder(tickSize).compareTo(BigDecimal.ZERO) == 0) {
                 return price;
             }
-            
+
             // 調整價格為符合步長的值 (向下取整)
             // 計算公式: price - (price % tickSize)
             // 在Java中，可以使用 divide 和 multiply 來實現
@@ -436,13 +444,13 @@ public class BinanceApiServiceImpl implements BinanceApiService {
             throw new BinanceApiException("調整價格失敗: " + e.getMessage(), e);
         }
     }
-    
+
     @Override
     public BigDecimal adjustQuantityToPrecision(String symbol, BigDecimal quantity) {
         try {
             SymbolInfo symbolInfo = getSymbolInfo(symbol);
             int quantityPrecision = symbolInfo.getQuantityPrecision();
-            
+
             // 調整數量到指定精度，使用ROUND_UP確保不會因精度調整導致名義價值低於最小要求
             return quantity.setScale(quantityPrecision, BigDecimal.ROUND_UP);
         } catch (Exception e) {
@@ -453,7 +461,7 @@ public class BinanceApiServiceImpl implements BinanceApiService {
 
     /**
      * 調用幣安API
-     * 
+     *
      * @param endpoint API端點
      * @param params 參數
      * @param method HTTP方法
@@ -463,15 +471,15 @@ public class BinanceApiServiceImpl implements BinanceApiService {
     private String callApi(String endpoint, Map<String, Object> params, String method, boolean needSignature) throws IOException {
         // 檢查API金鑰是否已設定（如果需要簽名）
         if (needSignature) {
-            if (binanceConfig.getApiKey() == null || binanceConfig.getApiKey().isEmpty() || 
-                binanceConfig.getSecretKey() == null || binanceConfig.getSecretKey().isEmpty()) {
+            if (binanceConfig.getApiKey() == null || binanceConfig.getApiKey().isEmpty() ||
+                    binanceConfig.getSecretKey() == null || binanceConfig.getSecretKey().isEmpty()) {
                 throw new BinanceApiException("API金鑰或秘鑰未配置，請在設定頁面配置API金鑰");
             }
         }
-        
+
         String url = binanceConfig.getBaseUrl() + endpoint;
         HttpUriRequestBase request;
-        
+
         // 構建查詢參數
         StringBuilder queryString = new StringBuilder();
         if (params != null && !params.isEmpty()) {
@@ -482,21 +490,21 @@ public class BinanceApiServiceImpl implements BinanceApiService {
                 queryString.append(entry.getKey()).append("=").append(entry.getValue());
             }
         }
-        
+
         // 添加時間戳和簽名
         if (needSignature) {
             if (queryString.length() > 0) {
                 queryString.append("&");
             }
-            
+
             long timestamp = System.currentTimeMillis();
             queryString.append("timestamp=").append(timestamp);
-            
+
             // 生成簽名
             String signature = generateSignature(queryString.toString(), binanceConfig.getSecretKey());
             queryString.append("&signature=").append(signature);
         }
-        
+
         // 根據HTTP方法創建請求
         if ("GET".equals(method)) {
             if (queryString.length() > 0) {
@@ -516,12 +524,12 @@ public class BinanceApiServiceImpl implements BinanceApiService {
         } else {
             throw new BinanceApiException("不支持的HTTP方法: " + method);
         }
-        
+
         // 添加API密鑰到頭部（如果已設定）
         if (binanceConfig.getApiKey() != null && !binanceConfig.getApiKey().isEmpty()) {
             request.addHeader("X-MBX-APIKEY", binanceConfig.getApiKey());
         }
-        
+
         // 執行請求
         try (CloseableHttpResponse response = httpClient.execute(request)) {
             String responseBody;
@@ -531,20 +539,19 @@ public class BinanceApiServiceImpl implements BinanceApiService {
                 log.error("解析API回應失敗", e);
                 throw new BinanceApiException("解析API回應失敗: " + e.getMessage(), e);
             }
-            
+
             int statusCode = response.getCode();
             if (statusCode != 200) {
                 log.error("API請求失敗，狀態碼: {}, 回應: {}", statusCode, responseBody);
                 throw new BinanceApiException("API請求失敗，狀態碼: " + statusCode + ", 回應: " + responseBody);
             }
-            
             return responseBody;
         }
     }
-    
+
     /**
      * 生成HMAC SHA256簽名
-     * 
+     *
      * @param data 要簽名的數據
      * @param key 密鑰
      * @return 簽名
@@ -554,7 +561,7 @@ public class BinanceApiServiceImpl implements BinanceApiService {
             Mac hmacSha256 = Mac.getInstance("HmacSHA256");
             SecretKeySpec secretKeySpec = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             hmacSha256.init(secretKeySpec);
-            
+
             byte[] hash = hmacSha256.doFinal(data.getBytes(StandardCharsets.UTF_8));
             return bytesToHex(hash);
         } catch (Exception e) {
@@ -562,10 +569,10 @@ public class BinanceApiServiceImpl implements BinanceApiService {
             throw new BinanceApiException("生成簽名失敗: " + e.getMessage(), e);
         }
     }
-    
+
     /**
      * 將位元組轉換為十六進制字串
-     * 
+     *
      * @param bytes 位元組
      * @return 十六進制字串
      */
@@ -580,4 +587,29 @@ public class BinanceApiServiceImpl implements BinanceApiService {
         }
         return hexString.toString();
     }
+
+    private String calculateUnrealizedProfitPercentage(
+            BigDecimal unrealizedProfit,
+            BigDecimal markPrice,
+            BigDecimal positionAmt,
+            BigDecimal leverage
+    ) {
+        // Avoid division by zero
+        if (markPrice.equals(BigDecimal.ZERO) || leverage.equals(BigDecimal.ZERO)) {
+            return "0.00%";
+        }
+
+        // Calculate Notional Value
+        BigDecimal notionalValue = markPrice.multiply(positionAmt.abs());
+
+        // Calculate Initial Margin
+        BigDecimal initialMargin = notionalValue.divide(leverage, 4, RoundingMode.HALF_UP);
+
+        // Calculate the Profit Rate
+        BigDecimal profitRate = unrealizedProfit.divide(initialMargin, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+
+        // Format to 2 decimal places with % symbol
+        return String.format("%.2f%%", profitRate);
+    }
+
 }

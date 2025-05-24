@@ -128,9 +128,9 @@ function refreshOverview() {
                         activePositions.forEach(function(position) {
                             const row = $('<tr></tr>');
                             row.append($('<td></td>').text(position.symbol));
-                            row.append($('<td></td>').text(parseFloat(position.positionAmt) > 0 ? '多' : '空'));
+                            row.append($('<td></t:"0.0","markPrice":"0.00000000","unRealizedProfit":"0.00000000","liquidationPrice":"0","leverage":"5","maxNotionalValue":"3000000","marginType":"cross","isolatedMargin":"0.00000000","isAutoAddMargin":"false","positionSide":"BOTH","notional":"0","isolatedWallet":"0","updateTime":0,"isolated":false,"adlQuantile":0},{"symbol":"EPICUSDT","positionAmt":"0.0","entryPrice":"0.0","breakEvenPrice":"0.0","markPrice":"0.00000000","unRealizedProfit":"0.00000000","liquidationPrice":"0","leverage":"5","maxNotionalValue":"250000","marginType":"cross","isolatedMargin":"0.00000000","isAutoAddMargin":"false","positionSide":"BOTH","notional":"0","isolatedWallet":"0","updateTime":0,"isolated":false,"adlQuantile":0},{"symbol":"POLUSDT","positionAmt":"0","entryPrice":"0.0","breakEvenPrice":"0.0","markPrice":"0.00000000","unRealizedProfit":"0.00000000","liquidationPrice":"0","leverage":"5","maxNotionalValue":"750000","marginType":"cross","isolatedMard>').text(parseFloat(position.positionAmt) > 0 ? '多' : '空'));
                             row.append($('<td></td>').text(Math.abs(position.positionAmt)));
-                            
+
                             // 根據盈虧添加顏色
                             const profitTd = $('<td></td>').text(parseFloat(position.unrealizedProfit).toFixed(2));
                             if (parseFloat(position.unrealizedProfit) > 0) {
@@ -139,6 +139,15 @@ function refreshOverview() {
                                 profitTd.addClass('text-danger');
                             }
                             row.append(profitTd);
+
+                            // Unrealized Profit Percentage with "-" check
+                            const percentageTd = $('<td></td>').text(position.unrealizedProfitPercentage);
+                            if (position.unrealizedProfitPercentage.includes('-')) {
+                                percentageTd.addClass('text-danger'); // Negative percentage
+                            } else {
+                                percentageTd.addClass('text-success'); // Positive percentage
+                            }
+                            row.append(percentageTd);
                             
                             positionsTableBody.append(row);
                         });

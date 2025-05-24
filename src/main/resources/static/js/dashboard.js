@@ -192,7 +192,7 @@ function refreshDataWithoutResetTimer() {
                                 row.append($('<td></td>').text(position.symbol));
                                 row.append($('<td></td>').text(parseFloat(position.positionAmt) > 0 ? '多' : '空'));
                                 row.append($('<td></td>').text(Math.abs(position.positionAmt)));
-                                
+
                                 // 根據盈虧添加顏色
                                 const profitTd = $('<td></td>').text(parseFloat(position.unrealizedProfit).toFixed(2));
                                 if (parseFloat(position.unrealizedProfit) > 0) {
@@ -201,7 +201,16 @@ function refreshDataWithoutResetTimer() {
                                     profitTd.addClass('text-danger');
                                 }
                                 row.append(profitTd);
-                                
+
+                                // Unrealized Profit Percentage with "-" check
+                                const percentageTd = $('<td></td>').text(position.unrealizedProfitPercentage);
+                                if (position.unrealizedProfitPercentage.includes('-')) {
+                                    percentageTd.addClass('text-danger'); // Negative percentage
+                                } else {
+                                    percentageTd.addClass('text-success'); // Positive percentage
+                                }
+                                row.append(percentageTd);
+
                                 positionsTableBody.append(row);
                             });
                         } else {

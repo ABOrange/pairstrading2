@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PositionInfo {
-    
+
     private String symbol; // 交易對符號
     private String positionSide; // 倉位方向 (LONG, SHORT, BOTH)
     private BigDecimal positionAmt; // 倉位數量
@@ -22,17 +22,18 @@ public class PositionInfo {
     private BigDecimal markPrice; // 標記價格
     private BigDecimal liquidationPrice; // 強平價格
     private BigDecimal unrealizedProfit; // 未實現盈虧
+    private String unrealizedProfitPercentage;
     private BigDecimal leverage; // 槓桿倍率
     private Long updateTime; // 更新時間
     private boolean isolated; // 是否為逐倉模式
-    
+
     // 用於模擬倉位
     @Builder.Default
     private boolean isSimulated = false;
-    
+
     /**
      * 判斷是否為多頭倉位
-     * 
+     *
      * @return 是否為多頭倉位
      */
     public boolean isLongPosition() {
@@ -41,10 +42,10 @@ public class PositionInfo {
         }
         return positionAmt.compareTo(BigDecimal.ZERO) > 0;
     }
-    
+
     /**
      * 判斷是否為空頭倉位
-     * 
+     *
      * @return 是否為空頭倉位
      */
     public boolean isShortPosition() {
@@ -53,10 +54,10 @@ public class PositionInfo {
         }
         return positionAmt.compareTo(BigDecimal.ZERO) < 0;
     }
-    
+
     /**
      * 獲取倉位的絕對值大小
-     * 
+     *
      * @return 倉位的絕對值大小
      */
     public BigDecimal getAbsolutePositionSize() {
@@ -65,10 +66,10 @@ public class PositionInfo {
         }
         return positionAmt.abs();
     }
-    
+
     /**
      * 創建模擬倉位
-     * 
+     *
      * @param symbol 交易對符號
      * @param positionSide 倉位方向
      * @param positionAmt 倉位數量

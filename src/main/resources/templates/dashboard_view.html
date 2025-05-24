@@ -11,239 +11,241 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 </head>
 <body>
-    <nav class="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
-        <div class="container-fluid">
-            <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="#">配對交易機器人</a>
-            <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="navbar-nav d-flex flex-row align-items-center">
-                <div class="nav-item text-nowrap me-3">
-                    <span class="text-light">自動更新倒數: <span id="countdown-timer" class="badge bg-secondary">20</span>秒</span>
-                </div>
-                <div class="nav-item text-nowrap">
-<!--                    <button class="btn btn-primary nav-link px-3" id="runJobBtn">手動執行任務</button>-->
-                </div>
-            </div>
-        </div>
-    </nav>
-
+<nav class="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
     <div class="container-fluid">
-        <div class="row">
-            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-                <div class="sidebar-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link active" href="#overview" data-bs-toggle="tab">
-                                總覽
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#charts" data-bs-toggle="tab">
-                                交易圖表
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#logs" data-bs-toggle="tab">
-                                系統日誌
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#trade-logs" data-bs-toggle="tab">
-                                交易操作日誌
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="#">配對交易機器人</a>
+        <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="navbar-nav d-flex flex-row align-items-center">
+            <div class="nav-item text-nowrap me-3">
+                <span class="text-light">自動更新倒數: <span id="countdown-timer" class="badge bg-secondary">20</span>秒</span>
+            </div>
+            <div class="nav-item text-nowrap">
+                <!--                    <button class="btn btn-primary nav-link px-3" id="runJobBtn">手動執行任務</button>-->
+            </div>
+        </div>
+    </div>
+</nav>
 
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-                <div class="tab-content" id="myTabContent">
-                    <!-- 總覽 -->
-                    <div class="tab-pane fade show active" id="overview">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2">儀表板總覽</h1>
-                            <div class="btn-toolbar mb-2 mb-md-0">
-                                <div class="btn-group me-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshOverviewBtn">重新整理</button>
+<div class="container-fluid">
+    <div class="row">
+        <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+            <div class="sidebar-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#overview" data-bs-toggle="tab">
+                            總覽
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#charts" data-bs-toggle="tab">
+                            交易圖表
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#logs" data-bs-toggle="tab">
+                            系統日誌
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#trade-logs" data-bs-toggle="tab">
+                            交易操作日誌
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="tab-content" id="myTabContent">
+                <!-- 總覽 -->
+                <div class="tab-pane fade show active" id="overview">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">儀表板總覽</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <div class="btn-group me-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshOverviewBtn">重新整理</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- 資產信息 -->
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    資產信息
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <h5 class="card-title" th:text="${asset1}">BTCUSDT</h5>
+                                            <p class="card-text">價格: <span id="asset1Price" th:text="${asset1Price}">0.00</span></p>
+                                        </div>
+                                        <div class="col-6">
+                                            <h5 class="card-title" th:text="${asset2}">ETHUSDT</h5>
+                                            <p class="card-text">價格: <span id="asset2Price" th:text="${asset2Price}">0.00</span></p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="row">
-                            <!-- 資產信息 -->
-                            <div class="col-md-6">
-                                <div class="card mb-4">
-                                    <div class="card-header">
-                                        資產信息
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-6">
-                                                <h5 class="card-title" th:text="${asset1}">BTCUSDT</h5>
-                                                <p class="card-text">價格: <span id="asset1Price" th:text="${asset1Price}">0.00</span></p>
-                                            </div>
-                                            <div class="col-6">
-                                                <h5 class="card-title" th:text="${asset2}">ETHUSDT</h5>
-                                                <p class="card-text">價格: <span id="asset2Price" th:text="${asset2Price}">0.00</span></p>
-                                            </div>
-                                        </div>
-                                    </div>
+                        <!-- 持倉信息 -->
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    持倉信息
                                 </div>
-                            </div>
-                            
-                            <!-- 持倉信息 -->
-                            <div class="col-md-6">
-                                <div class="card mb-4">
-                                    <div class="card-header">
-                                        持倉信息
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-striped table-sm">
-                                                <thead>
-                                                    <tr>
-                                                        <th>資產</th>
-                                                        <th>方向</th>
-                                                        <th>數量</th>
-                                                        <th>收益</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="positionsTableBody">
-                                                    <tr th:if="${positions == null || positions.empty}">
-                                                        <td colspan="4">暫無持倉</td>
-                                                    </tr>
-                                                    <tr th:each="position : ${positions}">
-                                                        <td th:text="${position.symbol}">BTCUSDT</td>
-                                                        <td th:text="${position.longPosition} ? '多' : '空'">多</td>
-                                                        <td th:text="${position.positionAmt}">0.00</td>
-                                                        <td th:text="${position.unrealizedProfit}">0.00</td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 交易信號報告 -->
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header">
-                                        交易信號報告
-                                    </div>
-                                    <div class="card-body">
-                                        <pre id="signalReport" th:text="${zScoreReport}">暫無數據</pre>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-sm">
+                                            <thead>
+                                            <tr>
+                                                <th>資產</th>
+                                                <th>方向</th>
+                                                <th>數量</th>
+                                                <th>收益</th>
+                                                <th>收益%</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody id="positionsTableBody">
+                                            <tr th:if="${positions == null || positions.empty}">
+                                                <td colspan="4">暫無持倉</td>
+                                            </tr>
+                                            <tr th:each="position : ${positions}">
+                                                <td th:text="${position.symbol}">BTCUSDT</td>
+                                                <td th:text="${position.longPosition} ? '多' : '空'">多</td>
+                                                <td th:text="${position.positionAmt}">0.00</td>
+                                                <td th:text="${position.unrealizedProfit}">0.00</td>
+                                                <td th:text="${position.unrealizedProfitPercentage}">0%</td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- 交易圖表 -->
-                    <div class="tab-pane fade" id="charts">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2">交易圖表</h1>
-                            <div class="btn-toolbar mb-2 mb-md-0">
-                                <div class="btn-group me-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshChartsBtn">重新整理</button>
+
+                    <!-- 交易信號報告 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    交易信號報告
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <!-- Z分數圖表 -->
-                            <div class="col-12">
-                                <div class="card mb-4">
-                                    <div class="card-header">
-                                        Z分數圖表
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="chart-container">
-                                            <canvas id="zScoreChart" style="height: 450px"></canvas>
-                                        </div>
-                                        <div class="mt-3">
-                                            <pre id="zScoreText" class="text-monospace"></pre>
-                                        </div>
-                                    </div>
+                                <div class="card-body">
+                                    <pre id="signalReport" th:text="${zScoreReport}">暫無數據</pre>
                                 </div>
-                            </div>
-                            
-                            <!-- 價差圖表 -->
-                            <div class="col-12">
-                                <div class="card mb-4">
-                                    <div class="card-header">
-                                        價差圖表
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="chart-container">
-                                            <canvas id="spreadChart" style="height: 450px"></canvas>
-                                        </div>
-                                        <div class="mt-3">
-                                            <pre id="spreadText" class="text-monospace"></pre>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 系統日誌 -->
-                    <div class="tab-pane fade" id="logs">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2">系統日誌</h1>
-                            <div class="btn-toolbar mb-2 mb-md-0">
-                                <div class="btn-group me-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshLogsBtn">重新整理</button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" id="clearLogsBtn">清除日誌</button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="card-body">
-                                <pre id="systemLogs" class="log-container"></pre>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 交易操作日誌 -->
-                    <div class="tab-pane fade" id="trade-logs">
-                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                            <h1 class="h2">交易操作日誌</h1>
-                            <div class="btn-toolbar mb-2 mb-md-0">
-                                <div class="btn-group me-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshTradeLogsBtn">重新整理</button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="card-body">
-                                <pre id="tradeLogs" class="log-container"></pre>
                             </div>
                         </div>
                     </div>
                 </div>
-            </main>
+
+                <!-- 交易圖表 -->
+                <div class="tab-pane fade" id="charts">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">交易圖表</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <div class="btn-group me-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshChartsBtn">重新整理</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Z分數圖表 -->
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    Z分數圖表
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="zScoreChart" style="height: 450px"></canvas>
+                                    </div>
+                                    <div class="mt-3">
+                                        <pre id="zScoreText" class="text-monospace"></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 價差圖表 -->
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    價差圖表
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="spreadChart" style="height: 450px"></canvas>
+                                    </div>
+                                    <div class="mt-3">
+                                        <pre id="spreadText" class="text-monospace"></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 系統日誌 -->
+                <div class="tab-pane fade" id="logs">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">系統日誌</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <div class="btn-group me-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshLogsBtn">重新整理</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" id="clearLogsBtn">清除日誌</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <pre id="systemLogs" class="log-container"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 交易操作日誌 -->
+                <div class="tab-pane fade" id="trade-logs">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">交易操作日誌</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <div class="btn-group me-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshTradeLogsBtn">重新整理</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <pre id="tradeLogs" class="log-container"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- 操作結果提示 -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="resultToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto" id="toastTitle">提示</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+            操作成功
         </div>
     </div>
+</div>
 
-    <!-- 操作結果提示 -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="resultToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <strong class="me-auto" id="toastTitle">提示</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-            <div class="toast-body" id="toastMessage">
-                操作成功
-            </div>
-        </div>
-    </div>
-
-    <script src="/js/dashboard.js"></script>
+<script src="/js/dashboard.js"></script>
 </body>
 </html>
